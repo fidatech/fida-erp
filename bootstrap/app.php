@@ -25,8 +25,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
 $publicPath = $_SERVER['FIDAERP_PUBLIC_PATH'] ?? $_ENV['FIDAERP_PUBLIC_PATH'] ?? getenv('FIDAERP_PUBLIC_PATH');
 if (is_string($publicPath) && $publicPath !== '') {
     $app->usePublicPath($publicPath);
-} elseif (is_dir(dirname(__DIR__).'/../staging/public') && dirname(__DIR__) === '/home/fidaerp/staging/application') {
-    $app->usePublicPath('/home/fidaerp/staging/public');
+} elseif (dirname(__DIR__) === '/home/fidaerp/staging/application' && is_dir(dirname(__DIR__).'/../public')) {
+    $app->usePublicPath(dirname(__DIR__).'/../public');
 } elseif (is_dir(dirname(__DIR__).'/../public_html')) {
     $app->usePublicPath(dirname(__DIR__).'/../public_html');
 }
