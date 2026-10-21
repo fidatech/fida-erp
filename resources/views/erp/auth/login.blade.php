@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fida ERP Login</title>
+<style>body{margin:0;background:#f3f6fa;font:15px system-ui;min-height:100vh;display:grid;place-items:center;color:#142b45}.card{width:min(420px,92%);box-sizing:border-box;background:#fff;border:1px solid #dfe6ee;border-radius:18px;padding:35px;box-shadow:0 12px 45px #162b4512}h1{margin:0 0 8px}h1 span{color:#e98a28}p{color:#64758a;margin-bottom:26px}label{display:block;margin:14px 0 6px;font-weight:600}input{width:100%;box-sizing:border-box;padding:13px;border:1px solid #d4dde8;border-radius:8px;font:inherit}button{width:100%;background:#142b45;color:#fff;border:0;border-radius:8px;padding:13px;margin-top:22px;font:inherit;cursor:pointer}.error{background:#fff2f2;color:#a33;padding:10px;border-radius:8px}</style></head><body>
+<form method="POST" action="{{ route('erp.login.submit') }}" class="card">@csrf<h1>Fida<span>.</span> ERP</h1><p>Business management system</p>
+@if($errors->any())<div class="error">{{ __('erp::ui.invalid_login') }}</div>@endif
+<label for="email">{{ __('erp::ui.email') }}</label><input type="email" required id="email" name="email" autocomplete="username" value="{{ old('email') }}">
+<label for="password">{{ __('erp::ui.password') }}</label><input type="password" required id="password" name="password" autocomplete="current-password">
+<button>{{ __('erp::ui.login') }}</button></form></body></html>

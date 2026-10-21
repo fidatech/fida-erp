@@ -1,0 +1,8 @@
+@extends('erp.layout')
+@section('content')
+<div class="erp-between"><h1 class="erp-title">{{ __('erp::ui.sales') }}</h1><a href="{{ route('erp.sales.create') }}" class="erp-btn">+ {{ __('erp::ui.new_invoice') }}</a></div>
+<div class="erp-card"><div class="erp-table-scroll"><table class="erp-table"><thead><tr><th>{{ __('erp::ui.number') }}</th><th>{{ __('erp::ui.customers') }}</th><th>{{ __('erp::ui.total') }}</th><th>{{ __('erp::ui.status') }}</th><th>{{ __('erp::ui.actions') }}</th></tr></thead><tbody>
+@foreach($rows as $s)<tr><td>{{ $s->number }}</td><td>{{ $s->customer }}</td><td>{{ $s->total }} {{ $s->currency_code }}</td><td>{{ __('erp::ui.'.$s->status) }}</td><td><a class="erp-btn secondary" href="{{ route('erp.sales.pdf',$s->id) }}">PDF</a>
+@if($s->status==='draft')<form method="POST" action="{{ route('erp.sales.post',$s->id) }}" onsubmit="return confirm(@js(__('erp::ui.accounting_warning')))" >@csrf<button class="erp-btn">{{ __('erp::ui.post') }}</button></form>@endif
+</td></tr>@endforeach</tbody></table></div><div class="erp-pagination">{{ $rows->links() }}</div></div>
+@endsection
