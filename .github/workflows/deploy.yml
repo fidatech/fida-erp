@@ -46,6 +46,8 @@ jobs:
           npm run build
 
   deploy:
+    # Only reviewed main-branch code may be deployed to production.
+    if: inputs.target == 'staging' || github.ref == 'refs/heads/main'
     needs: verify
     runs-on: ubuntu-latest
     environment: ${{ inputs.target }}
@@ -70,6 +72,16 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
+      - name: Confirm target prerequisites
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          if [ "$TARGET" = production ]; then REMOTE_DIR=/home/fidaerp/application; else REMOTE_DIR=/home/fidaerp/staging/application; fi
+          ssh -i "$HOME/.ssh/deploy_key" -p "${PORT:-22}" -o StrictHostKeyChecking=yes "$USER@$HOST" "test -f '$REMOTE_DIR/.env' && test -d '$REMOTE_DIR/vendor' && test -f '$REMOTE_DIR/artisan'" || { echo 'Target is not initialized; refusing deployment'; exit 1; }
       - name: Upload application to target directory
         env:
           HOST: ${{ secrets.DEPLOY_HOST }}
