@@ -1,0 +1,97 @@
+name: FidaERP deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Deployment target"
+        type: choice
+        required: true
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fidaerp-deploy-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax check
+        run: |
+          find app routes database bootstrap -type f -name '*.php' -print0 | xargs -0 -n1 php -l >/dev/null
+      - name: Install PHP dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+      - name: Run tests
+        run: php artisan test
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Compile frontend
+        run: |
+          npm ci
+          npm run build
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: |
+          npm ci
+          npm run build
+      - name: Configure SSH with verified host key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          test -n "$DEPLOY_SSH_KEY" && test -n "$DEPLOY_HOST_KEY"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Upload application to target directory
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          if [ "$TARGET" = production ]; then
+            REMOTE_DIR="/home/fidaerp/application"
+            PUBLIC_DIR="/home/fidaerp/public_html"
+          else
+            REMOTE_DIR="/home/fidaerp/staging/application"
+            PUBLIC_DIR="/home/fidaerp/staging/public"
+          fi
+          SSH="ssh -i $HOME/.ssh/deploy_key -p ${PORT:-22} -o StrictHostKeyChecking=yes"
+          $SSH "$USER@$HOST" "mkdir -p '$REMOTE_DIR' '$PUBLIC_DIR/build'"
+          # Do not delete remote files: user uploads, env and storage must survive.
+          rsync -az --exclude='.git/' --exclude='.env' --exclude='.env.*' \
+            --exclude='vendor/' --exclude='node_modules/' --exclude='storage/' \
+            --exclude='public/' --exclude='tests/' --exclude='.github/' \
+            -e "$SSH" ./ "$USER@$HOST:$REMOTE_DIR/"
+          rsync -az -e "$SSH" public/build/ "$USER@$HOST:$PUBLIC_DIR/build/"
+          $SSH "$USER@$HOST" "cd '$REMOTE_DIR' && composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader && php artisan optimize:clear && php artisan config:cache && php artisan view:cache"
+          echo "Code deployed. Database migrations require separate review and execution."
