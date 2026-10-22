@@ -36,6 +36,7 @@ Evidence categories: **Observed** (source inspection), **Verified** (executed te
 | P8-01 | Critical | Production readiness and controlled deployment | Not authorized | Staging acceptance and approved release |
 
 ## Delivery log
+- `43c6c1c`, `8fb0abd`: normalize registration email and block duplicate reviewed registrations; added isolated SQLite feature tests. Verified staging test suite: 6 passed, 17 assertions. This does not implement automatic provisioning.
 - `a71c8ee`: blocked manual activation of tenants in unprovisioned states, made status update and audit atomic, deployed to staging, PHP lint passed, 4 existing tests passed. **Missing:** targeted transition tests; the current suite does not prove this behavior.
 - `74a42e3`: master specification committed to development branch.
 - `15e7a49`: implementation status and gap backlog committed.
