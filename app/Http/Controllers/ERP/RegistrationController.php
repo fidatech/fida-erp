@@ -20,8 +20,9 @@ class RegistrationController extends Controller {
   $key='erp-registration:'.$request->ip();
   if(RateLimiter::tooManyAttempts($key,3)) return back()->withErrors(['email'=>'Too many requests. Please try again later.']);
   RateLimiter::hit($key,3600);
+  $data['email']=Str::lower(trim($data['email']));
   $db=DB::connection(config('erp.central_connection','mysql'));
-  $exists=$db->table('erp_registration_requests')->where('email',$data['email'])->whereIn('status',['pending','approved'])->exists();
+  $exists=$db->table('erp_registration_requests')->where('email',$data['email'])->whereIn('status',['pending','reviewed','provisioning','approved'])->exists();
   if($exists) return back()->withErrors(['email'=>'A registration request already exists for this email.']);
   $db->table('erp_registration_requests')->insert([
    'name'=>$data['name'],'email'=>$data['email'],'company'=>$data['company'],
