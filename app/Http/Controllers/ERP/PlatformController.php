@@ -79,12 +79,23 @@ final class PlatformController extends Controller
   });return back()->with('success','Subscription assigned');
  }
  public function suspend(Request $request,int $id){
-  $request->validate(['action'=>'required|in:suspend,activate']);
-  DB::connection('mysql')->table('erp_tenants')->where('id',$id)->update($request->action==='suspend'
-    ?['status'=>'suspended','suspended_at'=>now(),'updated_at'=>now()]
-    :['status'=>'active','suspended_at'=>null,'updated_at'=>now()]);
-  DB::connection('mysql')->table('erp_platform_audit_logs')->insert(['actor'=>(string)$request->user()->getAuthIdentifier(),
-      'event'=>'tenant.'.$request->action,'tenant_id'=>$id,'created_at'=>now(),'updated_at'=>now()]);
+  $data=$request->validate(['action'=>'required|in:suspend,activate']);
+  $db=DB::connection(config('erp.central_connection','mysql'));
+  $db->transaction(function()use($db,$data,$id,$request){
+   $tenant=$db->table('erp_tenants')->where('id',$id)->lockForUpdate()->first();
+   if(!$tenant) abort(404);
+   if($data['action']==='activate' && !in_array($tenant->status,['active','suspended'],true))
+    throw ValidationException::withMessages(['action'=>'Tenant provisioning must finish before activation.']);
+   $db->table('erp_tenants')->where('id',$id)->update($data['action']==='suspend'
+    ? ['status'=>'suspended','suspended_at'=>now(),'updated_at'=>now()]
+    : ['status'=>'active','suspended_at'=>null,'updated_at'=>now()]);
+   $db->table('erp_platform_audit_logs')->insert([
+    'actor'=>(string)$request->user()->getAuthIdentifier(),
+    'event'=>'tenant.'.$data['action'],'tenant_id'=>$id,
+    'context'=>json_encode(['previous_status'=>$tenant->status]),
+    'created_at'=>now(),'updated_at'=>now()
+   ]);
+  });
   return back()->with('success','Tenant status changed');
  }
  public function invoice(Request $request){
