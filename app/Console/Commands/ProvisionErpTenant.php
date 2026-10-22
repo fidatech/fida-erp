@@ -45,7 +45,10 @@ final class ProvisionErpTenant extends Command
             $connector->connect($tenant);
             DB::connection('erp_tenant')->getPdo();
             $tenant->save();
-            Artisan::call('migrate',['--database'=>'erp_tenant','--path'=>'database/migrations/erp_tenant','--force'=>true]);
+            $migrationExit=Artisan::call('migrate',['--database'=>'erp_tenant','--path'=>'database/migrations/erp_tenant','--force'=>true]);
+            if($migrationExit!==self::SUCCESS){
+                throw new \\RuntimeException('Tenant database migrations failed; tenant remains in provisioning status');
+            }
             $db=DB::connection('erp_tenant');
             $db->transaction(function()use($db,$name,$email,$password,$registration){
                 $db->table('company_settings')->insert(['name'=>$name,'base_currency'=>'AFN','locale'=>'en','timezone'=>'Asia/Kabul','created_at'=>now(),'updated_at'=>now()]);
@@ -69,7 +72,6 @@ final class ProvisionErpTenant extends Command
                 $id=$db->table('users')->insertGetId(['name'=>'Business Owner','email'=>$email,'password'=>$registration ? $registration->password_hash : Hash::make($password),'locale'=>'en','active'=>1,'created_at'=>now(),'updated_at'=>now()]);
                 $db->table('role_user')->insert(['role_id'=>$roleId,'user_id'=>$id]);
             });
-            $tenant->status='active';$tenant->save();
             if($registration){
                 DB::connection(config('erp.central_connection','mysql'))->transaction(function()use($registration,$tenant){
                     $db=DB::connection(config('erp.central_connection','mysql'));
@@ -78,6 +80,7 @@ final class ProvisionErpTenant extends Command
                     $db->table('erp_platform_audit_logs')->insert(['actor'=>'artisan:erp:provision','event'=>'registration.provisioned','tenant_id'=>$tenant->id,'context'=>json_encode(['registration_id'=>$registration->id,'email'=>$registration->email]),'created_at'=>now(),'updated_at'=>now()]);
                 });
             }
+            $tenant->status='active';$tenant->save();
             $this->info('Tenant created: https://'.$domain.'/erp/login');
             return self::SUCCESS;
         }catch(Throwable $e){
