@@ -13,14 +13,14 @@ Evidence categories: **Observed** (source inspection), **Verified** (executed te
 - **Observed:** tenant routes expose login, dashboard, profile, customer/product create/list, stock receive, sales create/post and invoice PDF. This is not evidence that all workflows function correctly.
 - **Observed:** tenant services include decimal, exchange rate, goods receipt, journal, sales, stock and PDF.
 - **Observed:** test suite has only 4 tests, including basic decimal math and a generic HTTP smoke test. Isolation, provisioning, subscriptions, stock/accounting reconciliation and authorization have no demonstrated coverage.
-- **Observed:** an earlier staging-only edit to `PlatformController.php` added plan/reseller audit entries and configurable central DB access; syntax and existing tests passed. This edit was **not committed** because Git author identity was not configured on the server. Preserve/reconcile it before pulling new commits.
+- **Verified:** plan/reseller audit logging and configurable central connection were syntax checked, passed the existing 4 tests, committed as `ae25d51` and pushed to the development branch. The working tree was clean after push.
 - **Unverified:** production backup and restore, cPanel API authorization/quotas, tenant DB limits, DNS/domain routing, queue worker/scheduler setup, real registration-to-tenant login, all business workflows, multilingual PDF output, load tests, security review.
 
 ## Priority backlog
 | ID | Priority | Work item | State | Acceptance evidence |
 | --- | --- | --- | --- | --- |
 | P0-01 | Critical | Complete code, schema, environment, security and deployment audit | In progress | Evidence-backed gap matrix |
-| P0-02 | Critical | Reconcile staging uncommitted change with GitHub branch and set repo-scoped Git identity | Blocked on safe reconciliation | Clean working tree and commit history |
+| P0-02 | Critical | Reconcile staging uncommitted change with GitHub branch | Completed | Fast-forward, stash restore, tests and pushed commit `ae25d51`; commit used explicit per-command author identity |
 | P1-01 | Critical | Registration state machine and unique tenant/domain reservation | Not started | Feature tests for approval/rejection/duplicates |
 | P1-02 | Critical | Authorized cPanel UAPI or operator-managed DB provisioning adapter | Not started | Integration test with nonproduction DB |
 | P1-03 | Critical | Idempotent queued tenant setup, seed, rollback/recovery, audit and notification | Not started | Success/failure/retry tests |
@@ -34,6 +34,11 @@ Evidence categories: **Observed** (source inspection), **Verified** (executed te
 | P6-01 | High | Institutional UI and EN/FA/PS RTL/PDF coverage | Partial/unknown | Screen and multilingual PDF verification |
 | P7-01 | Critical | Security, concurrency, backup/restore and performance | Not verified | Recorded test results |
 | P8-01 | Critical | Production readiness and controlled deployment | Not authorized | Staging acceptance and approved release |
+
+## Delivery log
+- `74a42e3`: master specification committed to development branch.
+- `15e7a49`: implementation status and gap backlog committed.
+- `ae25d51`: reconciled staging audit improvement, tested and pushed to GitHub.
 
 ## Execution rules
 Do not mark a feature complete based on route presence or successful syntax checks. Every implementation cycle requires verified tests, staging check, a commit and an updated status entry. Production must remain unchanged until a controlled release. No credentials, private data or production DB dumps in Git.
