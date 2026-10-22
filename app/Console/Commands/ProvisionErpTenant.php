@@ -18,13 +18,20 @@ final class ProvisionErpTenant extends Command
     public function handle(TenantConnector $connector): int
     {
         $slug=$this->argument('slug');$domain=strtolower($this->argument('domain'));$database=$this->argument('database');
-        if(!preg_match('/^[a-z0-9][a-z0-9-]{1,49}$/D',$slug)||!preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/D',$database)||!filter_var('https://'.$domain,FILTER_VALIDATE_URL)){
+        if(!preg_match('/^[a-z0-9][a-z0-9-]{1,49}$/D',$slug)||!preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/D',$database)||!preg_match('/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/D',$domain)){
             $this->error('Invalid slug, hostname or database');return self::FAILURE;
         }
          $dbUser=$this->option('db-user')?:$this->ask('Tenant database username');
         if(!preg_match('/^[a-zA-Z0-9_]{1,32}$/D',(string)$dbUser)){$this->error('Invalid database username');return self::FAILURE;}
         $dbPassword=$this->secret('Tenant database password');
         if(!$dbPassword){$this->error('Database password cannot be blank');return self::FAILURE;}
+        $centralHost=parse_url((string)config('app.url'),PHP_URL_HOST);
+        if($centralHost && $domain===strtolower($centralHost)){
+            $this->error('Tenant domain must not equal the platform hostname');return self::FAILURE;
+        }
+        if(Tenant::query()->where('domain',$domain)->orWhere('slug',$slug)->orWhere('database_name',$database)->exists()){
+            $this->error('Tenant domain, slug or database is already registered');return self::FAILURE;
+        }
         $registrationId=$this->option('registration');
         $registration=null;
         if($registrationId!==null){
