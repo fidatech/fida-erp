@@ -8,8 +8,10 @@ use Illuminate\Validation\ValidationException;
 final class PlatformController extends Controller
 {
  public function index(){
+  $section=request()->route('section','dashboard');
+  abort_unless(in_array($section,['dashboard','registrations','tenants','plans','resellers','subscriptions','billing','administration'],true),404);
   $db=DB::connection('mysql');
-  return view('erp.platform.index',['summary'=>[
+  return view('erp.platform.index',['section'=>$section,'summary'=>[
     'tenants'=>$db->table('erp_tenants')->count(),
     'active'=>$db->table('erp_tenants')->where('status','active')->count(),
     'resellers'=>$db->table('erp_resellers')->count(),
@@ -19,7 +21,28 @@ final class PlatformController extends Controller
   'plans'=>$db->table('erp_plans')->orderBy('price')->get(),
   'resellers'=>$db->table('erp_resellers')->orderBy('name')->get(),
   'registrations'=>$db->table('erp_registration_requests')->orderByDesc('id')->limit(100)->get(),
+  'subscriptions'=>$db->table('erp_subscriptions as s')->join('erp_tenants as t','t.id','=','s.tenant_id')->join('erp_plans as p','p.id','=','s.plan_id')->select('s.*','t.business_name','p.name as plan_name')->orderByDesc('s.id')->limit(100)->get(),
+  'auditLogs'=>$db->table('erp_platform_audit_logs')->orderByDesc('id')->limit(100)->get(),
   'invoices'=>$db->table('erp_platform_invoices')->orderByDesc('id')->limit(50)->get()]);
+ }
+ public function reviewRegistration(Request $request,int $id){
+  $data=$request->validate(['action'=>'required|in:review,reject']);
+  $db=DB::connection(config('erp.central_connection','mysql'));
+  $db->transaction(function()use($db,$data,$id,$request){
+   $registration=$db->table('erp_registration_requests')->where('id',$id)->lockForUpdate()->first();
+   if(!$registration) abort(404);
+   if($registration->status!=='pending') throw ValidationException::withMessages(['action'=>'This application has already been reviewed.']);
+   // Reviewing an application is NOT tenant activation. Database provisioning remains a separate secured process.
+   $status=$data['action']==='reject'?'rejected':'reviewed';
+   $db->table('erp_registration_requests')->where('id',$id)->update(['status'=>$status,'updated_at'=>now()]);
+   $db->table('erp_platform_audit_logs')->insert([
+    'actor'=>(string)$request->user()->getAuthIdentifier(),
+    'event'=>'registration.'.$status,'tenant_id'=>null,
+    'context'=>json_encode(['registration_id'=>$id,'email'=>$registration->email]),
+    'created_at'=>now(),'updated_at'=>now()
+   ]);
+  });
+  return redirect()->route('erp.platform.section','registrations')->with('success','Registration reviewed. Tenant provisioning and activation are still required.');
  }
  public function plan(Request $request){
   $v=$request->validate(['code'=>'required|string|max:40|unique:mysql.erp_plans,code',
