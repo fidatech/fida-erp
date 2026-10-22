@@ -16,6 +16,7 @@ Route::middleware(['web','auth:web',ErpPlatformAdmin::class])->prefix('platform/
  Route::get('/',[PlatformController::class,'index'])->name('index');
  Route::get('/manage/{section}',[PlatformController::class,'index'])->where('section','dashboard|registrations|tenants|plans|resellers|subscriptions|billing|administration')->name('section');
  Route::post('/registrations/{id}/review',[PlatformController::class,'reviewRegistration'])->whereNumber('id')->name('registrations.review');
+ Route::post('/registrations/{id}/provision',[PlatformController::class,'retryProvisioning'])->whereNumber('id')->name('registrations.provision');
  Route::post('logout',[PlatformAuthController::class,'logout'])->name('logout');
  Route::post('plans',[PlatformController::class,'plan'])->name('plans');
  Route::post('resellers',[PlatformController::class,'reseller'])->name('resellers');

@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\ERP;
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessErpRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -20,7 +21,11 @@ final class PlatformController extends Controller
        ->select('t.*','r.name as reseller')->orderByDesc('t.id')->simplePaginate(25),
   'plans'=>$db->table('erp_plans')->orderBy('price')->get(),
   'resellers'=>$db->table('erp_resellers')->orderBy('name')->get(),
-  'registrations'=>$db->table('erp_registration_requests')->orderByDesc('id')->limit(100)->get(),
+  'registrations'=>$db->table('erp_registration_requests as r')
+    ->leftJoin('erp_provisioning_runs as p','p.registration_id','=','r.id')
+    ->leftJoin('erp_tenants as t','t.id','=','p.tenant_id')
+    ->select('r.*','p.stage as provisioning_stage','p.last_error as provisioning_error','t.domain as tenant_domain')
+    ->orderByDesc('r.id')->limit(100)->get(),
   'subscriptions'=>$db->table('erp_subscriptions as s')->join('erp_tenants as t','t.id','=','s.tenant_id')->join('erp_plans as p','p.id','=','s.plan_id')->select('s.*','t.business_name','p.name as plan_name')->orderByDesc('s.id')->limit(100)->get(),
   'auditLogs'=>$db->table('erp_platform_audit_logs')->orderByDesc('id')->limit(100)->get(),
   'invoices'=>$db->table('erp_platform_invoices')->orderByDesc('id')->limit(50)->get()]);
@@ -42,7 +47,18 @@ final class PlatformController extends Controller
     'created_at'=>now(),'updated_at'=>now()
    ]);
   });
-  return redirect()->route('erp.platform.section','registrations')->with('success','Registration reviewed. Tenant provisioning and activation are still required.');
+  if($data['action']==='review') ProcessErpRegistration::dispatch($id);
+  return redirect()->route('erp.platform.section','registrations')->with('success',$data['action']==='review'
+    ? 'Registration reviewed; isolated database provisioning has been queued.' : 'Registration rejected.');
+ }
+ public function retryProvisioning(int $id) {
+   $db=DB::connection(config('erp.central_connection','mysql'));
+   $registration=$db->table('erp_registration_requests')->find($id);
+   abort_unless($registration,404);
+   if(!in_array($registration->status,['reviewed','provisioning'],true))
+     throw ValidationException::withMessages(['registration'=>'Only reviewed, unfinished registrations can be queued.']);
+   ProcessErpRegistration::dispatch($id);
+   return back()->with('success','Provisioning or domain verification has been queued again.');
  }
  public function plan(Request $request){
   $v=$request->validate(['code'=>'required|string|max:40|unique:mysql.erp_plans,code',
