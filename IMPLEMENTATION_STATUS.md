@@ -1,0 +1,39 @@
+# FidaERP Implementation Status
+Updated: 2026-10-22
+Branch: `development/admin-redesign`
+Evidence categories: **Observed** (source inspection), **Verified** (executed test or live check), **Unverified** (not yet exercised), **Missing**, **Blocked**.
+
+## Phase 0: initial repository/staging audit (IN PROGRESS)
+- **Verified (staging, previous session):** SSH connection via Desktop Commander; Laravel 13.38.0, PHP 8.4.26, staging environment, debug off, no maintenance mode.
+- **Verified:** central registration migration applied; 12 platform administration routes listed; 4 existing automated tests passed (6 assertions); platform login returned HTTP 200.
+- **Observed:** platform registration controller stores pending applications with password hashes; platform review action marks reviewed/rejected but does not provision a tenant.
+- **Observed:** `erp:provision` provisions an **existing** database with an interactive DB password and separate owner password. It does not link reviewed registrations to provisioning; no verified automatic cPanel database creation or retry workflow.
+- **Observed:** central migration defines tenants, resellers, plans, subscriptions, invoices, payments and audit logs; tenant migration files exist.
+- **Observed:** tenant middleware resolves by hostname and checks active status, then configures and disconnects tenant connection.
+- **Observed:** tenant routes expose login, dashboard, profile, customer/product create/list, stock receive, sales create/post and invoice PDF. This is not evidence that all workflows function correctly.
+- **Observed:** tenant services include decimal, exchange rate, goods receipt, journal, sales, stock and PDF.
+- **Observed:** test suite has only 4 tests, including basic decimal math and a generic HTTP smoke test. Isolation, provisioning, subscriptions, stock/accounting reconciliation and authorization have no demonstrated coverage.
+- **Observed:** an earlier staging-only edit to `PlatformController.php` added plan/reseller audit entries and configurable central DB access; syntax and existing tests passed. This edit was **not committed** because Git author identity was not configured on the server. Preserve/reconcile it before pulling new commits.
+- **Unverified:** production backup and restore, cPanel API authorization/quotas, tenant DB limits, DNS/domain routing, queue worker/scheduler setup, real registration-to-tenant login, all business workflows, multilingual PDF output, load tests, security review.
+
+## Priority backlog
+| ID | Priority | Work item | State | Acceptance evidence |
+| --- | --- | --- | --- | --- |
+| P0-01 | Critical | Complete code, schema, environment, security and deployment audit | In progress | Evidence-backed gap matrix |
+| P0-02 | Critical | Reconcile staging uncommitted change with GitHub branch and set repo-scoped Git identity | Blocked on safe reconciliation | Clean working tree and commit history |
+| P1-01 | Critical | Registration state machine and unique tenant/domain reservation | Not started | Feature tests for approval/rejection/duplicates |
+| P1-02 | Critical | Authorized cPanel UAPI or operator-managed DB provisioning adapter | Not started | Integration test with nonproduction DB |
+| P1-03 | Critical | Idempotent queued tenant setup, seed, rollback/recovery, audit and notification | Not started | Success/failure/retry tests |
+| P1-04 | Critical | Tenant isolation and auth/session/queue lifecycle | Not verified | Cross-tenant access denial tests |
+| P1-05 | High | Subscription/trial/grace/suspension entitlement enforcement | Not started | Expiry/limits tests |
+| P2-01 | High | Branches, users, roles, permissions, company configuration | Partial/unknown | CRUD and authorization tests |
+| P2-02 | High | Customers, suppliers, product catalog, warehouses | Partial/unknown | End-to-end CRUD tests |
+| P3-01 | Critical | Inventory ledger, purchases, sales, returns and POS | Partial/unknown | Stock reconciliation tests |
+| P4-01 | Critical | Balanced journals, reversals, statements and FX | Partial/unknown | Double-entry and financial reconciliation tests |
+| P5-01 | High | HR, payroll, document storage and report center | Missing/unverified | Payroll/report/document tests |
+| P6-01 | High | Institutional UI and EN/FA/PS RTL/PDF coverage | Partial/unknown | Screen and multilingual PDF verification |
+| P7-01 | Critical | Security, concurrency, backup/restore and performance | Not verified | Recorded test results |
+| P8-01 | Critical | Production readiness and controlled deployment | Not authorized | Staging acceptance and approved release |
+
+## Execution rules
+Do not mark a feature complete based on route presence or successful syntax checks. Every implementation cycle requires verified tests, staging check, a commit and an updated status entry. Production must remain unchanged until a controlled release. No credentials, private data or production DB dumps in Git.
