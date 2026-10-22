@@ -47,7 +47,7 @@ final class ProvisionErpTenant extends Command
             $tenant->save();
             $migrationExit=Artisan::call('migrate',['--database'=>'erp_tenant','--path'=>'database/migrations/erp_tenant','--force'=>true]);
             if($migrationExit!==self::SUCCESS){
-                throw new \\RuntimeException('Tenant database migrations failed; tenant remains in provisioning status');
+                throw new \RuntimeException('Tenant database migrations failed; tenant remains in provisioning status');
             }
             $db=DB::connection('erp_tenant');
             $db->transaction(function()use($db,$name,$email,$password,$registration){
