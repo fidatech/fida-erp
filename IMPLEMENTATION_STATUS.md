@@ -36,6 +36,7 @@ Evidence categories: **Observed** (source inspection), **Verified** (executed te
 | P8-01 | Critical | Production readiness and controlled deployment | Not authorized | Staging acceptance and approved release |
 
 ## Delivery log
+- `818ba1d`, `a8abec5`: added custom FidaERP SVG logo, integrated in tenant header, fixed active sidebar route ownership; deployed to staging, Blade cache compiled, 6 tests passed (17 assertions). Visual/browser regression checks remain outstanding.
 - `43c6c1c`, `8fb0abd`: normalize registration email and block duplicate reviewed registrations; added isolated SQLite feature tests. Verified staging test suite: 6 passed, 17 assertions. This does not implement automatic provisioning.
 - `a71c8ee`: blocked manual activation of tenants in unprovisioned states, made status update and audit atomic, deployed to staging, PHP lint passed, 4 existing tests passed. **Missing:** targeted transition tests; the current suite does not prove this behavior.
 - `74a42e3`: master specification committed to development branch.
