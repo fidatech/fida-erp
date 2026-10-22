@@ -81,8 +81,9 @@ final class TenantBootstrapService
                 'accounts.view','accounts.post','settings.manage',
             ];
             foreach ($permissions as $permission) {
-                $id = $db->table('permissions')->insertGetId(['name'=>$permission]);
-                $db->table('permission_role')->insert([
+                $id = $db->table('permissions')->where('name',$permission)->value('id');
+                if (!$id) $id = $db->table('permissions')->insertGetId(['name'=>$permission]);
+                $db->table('permission_role')->insertOrIgnore([
                     'role_id'=>$owner,'permission_id'=>$id,
                 ]);
             }
