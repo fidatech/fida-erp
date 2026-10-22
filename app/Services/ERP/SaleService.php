@@ -23,10 +23,10 @@ final class SaleService
             if (!$db->table('currencies')->where('code',$input['currency_code'])->where('active',1)->exists()) throw new DomainException('Unsupported currency');
             $sub='0';$lineDiscount='0';$tax='0';$lines=[];
             foreach($input['lines'] as $row){
-                $q=Decimal::valid((string)$row['quantity'],true);
-                $price=Decimal::valid((string)$row['unit_price']);
-                $discount=Decimal::valid((string)($row['discount']??'0'));
-                $lineTax=Decimal::valid((string)($row['tax']??'0'));
+                $q=Decimal::fixed((string)$row['quantity'],true);
+                $price=Decimal::fixed((string)$row['unit_price']);
+                $discount=Decimal::fixed((string)($row['discount']??'0'));
+                $lineTax=Decimal::fixed((string)($row['tax']??'0'));
                 if(Decimal::cmp($price,'0')<0||Decimal::cmp($discount,'0')<0||Decimal::cmp($lineTax,'0')<0) throw new DomainException('Negative price, discount or tax');
                 $gross=Decimal::mul($q,$price);
                 if(Decimal::cmp($discount,$gross)>0)throw new DomainException('Discount exceeds line amount');
@@ -35,7 +35,7 @@ final class SaleService
                 if(!$variant)throw new DomainException('Missing product variant');
                 $lines[]=['product_variant_id'=>$variant->id,'quantity'=>$q,'unit_price'=>$price,'discount'=>$discount,'tax'=>$lineTax,'cost_base'=>$variant->average_cost];
             }
-            $invoiceDiscount=Decimal::valid((string)($input['discount']??'0'));
+            $invoiceDiscount=Decimal::fixed((string)($input['discount']??'0'));
             if(Decimal::cmp($invoiceDiscount,'0')<0||Decimal::cmp($invoiceDiscount,Decimal::sub($sub,$lineDiscount))>0) throw new DomainException('Invalid invoice discount');
             $total=Decimal::add(Decimal::sub(Decimal::sub($sub,$lineDiscount),$invoiceDiscount),$tax);
             if (Decimal::cmp($total,'0')<=0) throw new DomainException('Invoice total must be positive');

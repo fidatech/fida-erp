@@ -63,9 +63,9 @@ final class ProvisionErpTenant extends Command
                 foreach([['AFN','Afghan Afghani',2],['USD','US Dollar',2],['PKR','Pakistani Rupee',2],['IRR','Iranian Rial',0],['EUR','Euro',2],['AED','UAE Dirham',2]] as [$code,$currency,$minor]) {
                     $db->table('currencies')->insert(['code'=>$code,'name'=>$currency,'minor_units'=>$minor,'active'=>1]);
                 }
-                foreach([['1000','Assets','asset',null,0],['1100','Trade Receivables','asset','1000',1],['1300','Inventory','asset','1000',1],
+                foreach([['1000','Assets','asset',null,0],['1100','Trade Receivables','asset','1000',1],['1200','Cash','asset','1000',1],['1300','Inventory','asset','1000',1],
                     ['2000','Liabilities','liability',null,0],['2100','Trade Payables','liability','2000',1],['2200','Sales Tax Payable','liability','2000',1],
-                    ['3000','Equity','equity',null,0],['4000','Income','income',null,0],['4100','Sales Revenue','income','4000',1],
+                    ['3000','Equity','equity',null,0],['3100','Contributed Capital','equity','3000',1],['4000','Income','income',null,0],['4100','Sales Revenue','income','4000',1],
                     ['5000','Expenses','expense',null,0],['5100','Cost of Goods Sold','expense','5000',1]] as [$code,$n,$type,$parent,$postable]){
                     $parentId=$parent?$db->table('accounts')->where('code',$parent)->value('id'):null;
                     $db->table('accounts')->insert(['code'=>$code,'name'=>$n,'type'=>$type,'parent_id'=>$parentId,'is_postable'=>$postable,'active'=>1,'created_at'=>now(),'updated_at'=>now()]);
@@ -73,7 +73,7 @@ final class ProvisionErpTenant extends Command
                 $year=(int)date('Y');$db->table('fiscal_periods')->insert(['name'=>(string)$year,'starts_on'=>$year.'-01-01','ends_on'=>$year.'-12-31','is_closed'=>0,'created_at'=>now(),'updated_at'=>now()]);
                 $db->table('warehouses')->insert(['branch_id'=>1,'code'=>'MAIN','name'=>'Main Warehouse','created_at'=>now(),'updated_at'=>now()]);
                 $roleId=$db->table('roles')->insertGetId(['name'=>'owner','created_at'=>now(),'updated_at'=>now()]);
-                foreach(['dashboard.view','customers.manage','products.manage','stock.manage','sales.manage','sales.post','reports.view','accounts.view','settings.manage'] as $perm){
+                foreach(['dashboard.view','customers.manage','products.manage','stock.manage','sales.manage','sales.post','reports.view','accounts.view','accounts.post','stock.transfer','settings.manage'] as $perm){
                     $id=$db->table('permissions')->insertGetId(['name'=>$perm]);$db->table('permission_role')->insert(['role_id'=>$roleId,'permission_id'=>$id]);
                 }
                 $id=$db->table('users')->insertGetId(['name'=>'Business Owner','email'=>$email,'password'=>$registration ? $registration->password_hash : Hash::make($password),'locale'=>'en','active'=>1,'created_at'=>now(),'updated_at'=>now()]);

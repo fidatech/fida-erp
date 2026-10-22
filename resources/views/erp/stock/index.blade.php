@@ -9,6 +9,19 @@
 <div><label class="erp-label">{{ __('erp::ui.base_rate') }} ({{ $base }})</label><input class="erp-field" name="fx_rate" value="1" type="number" step="any" min="0.000000000001" required></div></div>
 <div class="erp-table-scroll" style="margin-top:20px"><table class="erp-table"><thead><tr><th>{{ __('erp::ui.products') }}</th><th>{{ __('erp::ui.quantity') }}</th><th>{{ __('erp::ui.unit_cost') }}</th><th></th></tr></thead><tbody id="receipt-lines"></tbody></table></div>
 <p><button class="erp-btn secondary" type="button" id="add-receipt-line">+ {{ __('erp::ui.add_line') }}</button></p><button class="erp-btn">{{ __('erp::ui.receive_goods') }}</button></form></div>
+<div class="erp-card"><h3>Supplier receipts and payments</h3>
+<div class="erp-table-scroll"><table class="erp-table"><thead><tr><th>Receipt</th><th>Supplier</th><th>Total</th><th>Paid</th><th>Action</th></tr></thead><tbody>
+@forelse($receipts as $receipt)
+<tr><td>{{ $receipt->number }}</td><td>{{ $receipt->supplier }}</td><td>{{ $receipt->total }} {{ $receipt->currency_code }}</td><td>{{ $receipt->paid }}</td><td>
+@if(\App\Services\ERP\Decimal::cmp((string)$receipt->total,(string)$receipt->paid)>0)
+<form method="POST" action="{{ route('erp.stock.receipts.payments',$receipt->id) }}" class="erp-flex">
+@csrf<input type="hidden" name="request_key" value="{{ (string)\Illuminate\Support\Str::uuid() }}">
+<input name="amount" class="erp-field" type="number" step="0.000001" min="0.000001" max="{{ \App\Services\ERP\Decimal::sub((string)$receipt->total,(string)$receipt->paid) }}" value="{{ \App\Services\ERP\Decimal::sub((string)$receipt->total,(string)$receipt->paid) }}" required style="max-width:130px">
+<button class="erp-btn" type="submit">Pay supplier</button></form>
+@else Settled @endif
+</td></tr>
+@empty<tr><td colspan="5">No receipts yet.</td></tr>@endforelse
+</tbody></table></div></div>
 <div class="erp-card"><h3>{{ __('erp::ui.stock') }}</h3><div class="erp-table-scroll"><table class="erp-table"><thead><tr><th>{{ __('erp::ui.products') }}</th><th>{{ __('erp::ui.sku') }}</th><th>{{ __('erp::ui.warehouse') }}</th><th>{{ __('erp::ui.quantity') }}</th><th>{{ __('erp::ui.unit_cost') }}</th></tr></thead><tbody>
 @foreach($rows as $s)<tr><td>{{ $s->name }}</td><td>{{ $s->sku }}</td><td>{{ $s->warehouse }}</td><td>{{ $s->quantity }}</td><td>{{ $s->average_cost }}</td></tr>@endforeach
 </tbody></table></div><div class="erp-pagination">{{ $rows->links() }}</div></div>

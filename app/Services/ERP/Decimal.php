@@ -13,6 +13,15 @@ final class Decimal
         if ($positive && bccomp($v,'0',12)<=0) throw new InvalidArgumentException('Amount must be positive');
         return $v;
     }
+    /** Database amounts and quantities have at most six fractional digits. Rates may have twelve. */
+    public static function fixed(string $v, bool $positive=false): string
+    {
+        self::valid($v,$positive);
+        if (preg_match('/\.[0-9]{7,}$/D',$v)) {
+            throw new InvalidArgumentException('Amounts must have at most six decimal places');
+        }
+        return bcadd($v,'0',6);
+    }
     public static function add(string $a,string $b): string {return bcadd($a,$b,6);}
     public static function sub(string $a,string $b): string {return bcsub($a,$b,6);}
     public static function mul(string $a,string $b): string {return bcmul($a,$b,6);}

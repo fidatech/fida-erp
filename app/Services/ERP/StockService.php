@@ -9,7 +9,7 @@ final class StockService
     /** One event_key per business source line. Must be inside the caller's transaction. */
     public function move(int $warehouseId,int $variantId,string $delta,string $eventKey,string $sourceType,int $sourceId,string $unitCost='0'): void
     {
-        Decimal::valid($delta);
+        $delta=Decimal::fixed($delta);
         $db=DB::connection('erp_tenant');
         if($db->table('stock_movements')->where('event_key',$eventKey)->exists()) {
             throw new DomainException('Stock event already processed');

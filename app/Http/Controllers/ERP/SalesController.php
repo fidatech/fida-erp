@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\ERP;
 use App\Http\Controllers\Controller;
 use App\Services\ERP\SaleService;
+use App\Services\ERP\SettlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use DomainException;
@@ -9,7 +10,7 @@ final class SalesController extends Controller
 {
     public function index(){
         $rows=DB::connection('erp_tenant')->table('sales_invoices as s')->join('customers as c','c.id','=','s.customer_id')
-            ->select('s.id','s.number','s.total','s.currency_code','s.status','s.created_at','c.name as customer')
+            ->select('s.id','s.number','s.total','s.paid','s.currency_code','s.status','s.created_at','c.name as customer')
             ->orderByDesc('s.id')->cursorPaginate(25);
         return view('erp.sales.index',['rows'=>$rows]);
     }
@@ -25,6 +26,12 @@ final class SalesController extends Controller
             'lines.*.discount'=>'nullable|numeric|min:0','lines.*.tax'=>'nullable|numeric|min:0']);
         try{$id=$service->draft($input);}catch(DomainException|\InvalidArgumentException $e){return back()->withErrors(['sale'=>$e->getMessage()])->withInput();}
         return redirect()->route('erp.sales.index')->with('success',__('erp::ui.invoice_drafted').' #'.$id);
+    }
+    public function receivePayment(Request $request, int $id, SettlementService $settlements){
+        $data=$request->validate(['request_key'=>'required|uuid','amount'=>'required|numeric|gt:0']);
+        try{$paymentId=$settlements->receiveCustomerPayment($id,(string)$data['amount'],$data['request_key']);}
+        catch(DomainException|\InvalidArgumentException $e){return back()->withErrors(['payment'=>$e->getMessage()]);}
+        return back()->with('success','Customer payment #'.$paymentId.' posted');
     }
     public function post(int $id,SaleService $service){
         try{$service->post($id);}catch(DomainException|\InvalidArgumentException $e){return back()->withErrors(['sale'=>$e->getMessage()]);}

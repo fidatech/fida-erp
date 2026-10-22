@@ -3,20 +3,21 @@ $rtl = in_array(app()->getLocale(), ['fa','ps'], true);
 $nav = [
  ['key'=>'home','label'=>'Home','icon'=>'⌂','items'=>[
   ['label'=>'Dashboard','route'=>'erp.dashboard'],['label'=>'My Workspace','route'=>'erp.profile'],['label'=>'Customers','route'=>'erp.customers.index'],['label'=>'Tasks','route'=>null],['label'=>'Notifications','route'=>null],['label'=>'Master Data','route'=>'erp.products.index'],['label'=>'Configuration','route'=>'erp.profile']]],
- ['key'=>'finance','label'=>'Finance','icon'=>'▣','items'=>[['label'=>'Overview','route'=>'erp.dashboard'],['label'=>'Customers','route'=>'erp.customers.index'],['label'=>'Invoices','route'=>'erp.sales.index'],['label'=>'Accounting','route'=>null],['label'=>'Currencies','route'=>null]]],
- ['key'=>'inventory','label'=>'Inventory','icon'=>'◈','items'=>[['label'=>'Stock Overview','route'=>'erp.stock.index'],['label'=>'Products','route'=>'erp.products.index'],['label'=>'Suppliers','route'=>'erp.stock.index'],['label'=>'Warehouses','route'=>null]]],
+ ['key'=>'finance','label'=>'Finance','icon'=>'▣','items'=>[['label'=>'Overview','route'=>'erp.dashboard'],['label'=>'Customers','route'=>'erp.customers.index'],['label'=>'Invoices','route'=>'erp.sales.index'],['label'=>'Accounting','route'=>'erp.finance.index'],['label'=>'Currencies','route'=>null]]],
+ ['key'=>'inventory','label'=>'Inventory','icon'=>'◈','items'=>[['label'=>'Stock Overview','route'=>'erp.stock.index'],['label'=>'Products','route'=>'erp.products.index'],['label'=>'Suppliers','route'=>'erp.stock.index'],['label'=>'Warehouse transfers','route'=>'erp.stock.transfers']]],
  ['key'=>'procurement','label'=>'Procurement','icon'=>'🛒','items'=>[['label'=>'Purchasing','route'=>'erp.stock.index'],['label'=>'Suppliers','route'=>'erp.stock.index'],['label'=>'Purchase Orders','route'=>null]]],
  ['key'=>'sales','label'=>'Sales & POS','icon'=>'▤','items'=>[['label'=>'Sales','route'=>'erp.sales.index'],['label'=>'New Invoice','route'=>'erp.sales.create'],['label'=>'Customers','route'=>'erp.customers.index'],['label'=>'POS','route'=>null]]],
  ['key'=>'hr','label'=>'HR','icon'=>'♧','items'=>[['label'=>'Employees','route'=>null],['label'=>'Attendance','route'=>null],['label'=>'Leave','route'=>null]]],
  ['key'=>'payroll','label'=>'Payroll','icon'=>'▧','items'=>[['label'=>'Payroll Overview','route'=>null],['label'=>'Payslips','route'=>null]]],
  ['key'=>'manufacturing','label'=>'Manufacturing','icon'=>'⚙','items'=>[['label'=>'Production','route'=>null],['label'=>'BOM','route'=>null]]],
- ['key'=>'logistics','label'=>'Logistics','icon'=>'▱','items'=>[['label'=>'Deliveries','route'=>null],['label'=>'Transfers','route'=>null]]],
- ['key'=>'reports','label'=>'Reports','icon'=>'▥','items'=>[['label'=>'Sales Reports','route'=>'erp.sales.index'],['label'=>'Inventory Reports','route'=>'erp.stock.index'],['label'=>'Financial Reports','route'=>null]]],
+ ['key'=>'logistics','label'=>'Logistics','icon'=>'▱','items'=>[['label'=>'Deliveries','route'=>null],['label'=>'Transfers','route'=>'erp.stock.transfers']]],
+ ['key'=>'reports','label'=>'Reports','icon'=>'▥','items'=>[['label'=>'Sales Reports','route'=>'erp.sales.index'],['label'=>'Inventory Reports','route'=>'erp.stock.index'],['label'=>'Financial Reports','route'=>'erp.finance.index']]],
  ['key'=>'settings','label'=>'Settings','icon'=>'⚙','items'=>[['label'=>'My Profile','route'=>'erp.profile'],['label'=>'Company Settings','route'=>null],['label'=>'Users & Permissions','route'=>null]]],
 ];
 $currentRoute = request()->route()?->getName() ?? '';
 $section = match (true) {
  str_starts_with($currentRoute, 'erp.sales.') => 'sales',
+ str_starts_with($currentRoute, 'erp.finance.') => 'finance',
  str_starts_with($currentRoute, 'erp.stock.'), str_starts_with($currentRoute, 'erp.products.') => 'inventory',
  str_starts_with($currentRoute, 'erp.customers.') => 'finance',
  $currentRoute === 'erp.profile' => 'settings',

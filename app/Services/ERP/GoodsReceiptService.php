@@ -23,7 +23,7 @@ final class GoodsReceiptService
             $items=collect($input['lines'])->sortBy('product_variant_id')->values();
             foreach($items as $item){
                 if(isset($seen[$item['product_variant_id']]))throw new DomainException('Duplicate variants in receipt'); $seen[$item['product_variant_id']]=true;
-                $q=Decimal::valid((string)$item['quantity'],true);$unit=Decimal::valid((string)$item['unit_cost']);
+                $q=Decimal::fixed((string)$item['quantity'],true);$unit=Decimal::fixed((string)$item['unit_cost']);
                 if(Decimal::cmp($unit,'0')<=0)throw new DomainException('Cost must be positive');
                 $variant=$db->table('product_variants')->where('id',$item['product_variant_id'])->lockForUpdate()->first();
                 if(!$variant || !$variant->active)throw new DomainException('Invalid product variant');
