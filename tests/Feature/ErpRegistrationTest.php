@@ -89,4 +89,33 @@ class ErpRegistrationTest extends TestCase
 
         $this->assertSame(1, $db->table('erp_registration_requests')->count());
     }
+    public function test_registration_rejects_short_password_and_unaccepted_terms(): void
+    {
+        $payload = $this->registration('new@example.com');
+        $payload['password'] = 'short';
+        $payload['password_confirmation'] = 'short';
+        $payload['terms'] = '0';
+
+        $this->post(route('erp.register.submit'), $payload)
+            ->assertSessionHasErrors(['password', 'terms']);
+
+        $this->assertSame(0, DB::connection('erp_registration_test')
+            ->table('erp_registration_requests')->count());
+    }
+
+    public function test_registration_rate_limit_blocks_fourth_submission(): void
+    {
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $this->post(route('erp.register.submit'), $this->registration("owner{$attempt}@example.com"))
+                ->assertRedirect(route('erp.register'));
+        }
+
+        $this->from(route('erp.register'))
+            ->post(route('erp.register.submit'), $this->registration('owner4@example.com'))
+            ->assertSessionHasErrors('email');
+
+        $this->assertSame(3, DB::connection('erp_registration_test')
+            ->table('erp_registration_requests')->count());
+    }
+
 }
