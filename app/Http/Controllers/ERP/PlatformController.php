@@ -10,7 +10,7 @@ final class PlatformController extends Controller
  public function index(){
   $section=request()->route('section','dashboard');
   abort_unless(in_array($section,['dashboard','registrations','tenants','plans','resellers','subscriptions','billing','administration'],true),404);
-  $db=DB::connection('mysql');
+  $db=DB::connection(config('erp.central_connection','mysql'));
   return view('erp.platform.index',['section'=>$section,'summary'=>[
     'tenants'=>$db->table('erp_tenants')->count(),
     'active'=>$db->table('erp_tenants')->where('status','active')->count(),
@@ -48,19 +48,31 @@ final class PlatformController extends Controller
   $v=$request->validate(['code'=>'required|string|max:40|unique:mysql.erp_plans,code',
       'name'=>'required|string|max:150','price'=>'required|numeric|min:0','currency_code'=>'required|size:3|in:USD,AFN,EUR,AED',
       'interval'=>'required|in:monthly,yearly','max_users'=>'required|integer|min:1','max_branches'=>'required|integer|min:1']);
-  DB::connection('mysql')->table('erp_plans')->insert([...$v,'active'=>1,'created_at'=>now(),'updated_at'=>now()]);
+  $db=DB::connection(config('erp.central_connection','mysql'));
+  $db->transaction(function()use($db,$v,$request){
+   $id=$db->table('erp_plans')->insertGetId([...$v,'active'=>1,'created_at'=>now(),'updated_at'=>now()]);
+   $db->table('erp_platform_audit_logs')->insert(['actor'=>(string)$request->user()->getAuthIdentifier(),
+    'event'=>'plan.created','tenant_id'=>null,'context'=>json_encode(['plan_id'=>$id,'code'=>$v['code']]),
+    'created_at'=>now(),'updated_at'=>now()]);
+  });
   return back()->with('success','Plan created');
  }
  public function reseller(Request $request){
   $v=$request->validate(['name'=>'required|string|max:180','email'=>'required|email|unique:mysql.erp_resellers,email',
       'commission_percent'=>'required|numeric|min:0|max:100']);
-  DB::connection('mysql')->table('erp_resellers')->insert([...$v,'status'=>'active','created_at'=>now(),'updated_at'=>now()]);
+  $db=DB::connection(config('erp.central_connection','mysql'));
+  $db->transaction(function()use($db,$v,$request){
+   $id=$db->table('erp_resellers')->insertGetId([...$v,'status'=>'active','created_at'=>now(),'updated_at'=>now()]);
+   $db->table('erp_platform_audit_logs')->insert(['actor'=>(string)$request->user()->getAuthIdentifier(),
+    'event'=>'reseller.created','tenant_id'=>null,'context'=>json_encode(['reseller_id'=>$id]),
+    'created_at'=>now(),'updated_at'=>now()]);
+  });
   return back()->with('success','Reseller created');
  }
  public function subscribe(Request $request){
   $v=$request->validate(['tenant_id'=>'required|integer|exists:mysql.erp_tenants,id','plan_id'=>'required|integer|exists:mysql.erp_plans,id',
       'starts_at'=>'required|date','ends_at'=>'required|date|after:starts_at']);
-  $db=DB::connection('mysql');
+  $db=DB::connection(config('erp.central_connection','mysql'));
   $db->transaction(function()use($v,$db){
     $db->table('erp_subscriptions')->where('tenant_id',$v['tenant_id'])->where('status','active')->update(['status'=>'superseded','updated_at'=>now()]);
     $db->table('erp_subscriptions')->insert([...$v,'status'=>'active','created_at'=>now(),'updated_at'=>now()]);
@@ -86,7 +98,7 @@ final class PlatformController extends Controller
  public function payment(Request $request){
   $v=$request->validate(['invoice_id'=>'required|integer|exists:mysql.erp_platform_invoices,id',
       'amount'=>'required|numeric|gt:0','method'=>'required|in:bank,cash,other','reference'=>'required|string|min:5|max:190']);
-  $db=DB::connection('mysql');
+  $db=DB::connection(config('erp.central_connection','mysql'));
   $db->transaction(function() use($v,$db,$request){
    $bill=$db->table('erp_platform_invoices')->where('id',$v['invoice_id'])->lockForUpdate()->first();
    if(!$bill)throw ValidationException::withMessages(['invoice_id'=>'Invoice not found']);
