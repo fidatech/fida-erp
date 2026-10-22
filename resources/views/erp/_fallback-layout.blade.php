@@ -15,8 +15,13 @@ $nav = [
  ['key'=>'settings','label'=>'Settings','icon'=>'⚙','items'=>[['label'=>'My Profile','route'=>'erp.profile'],['label'=>'Company Settings','route'=>null],['label'=>'Users & Permissions','route'=>null]]],
 ];
 $currentRoute = request()->route()?->getName() ?? '';
-$section = 'home';
-foreach ($nav as $group) { foreach ($group['items'] as $item) { if ($item['route'] && $item['route'] === $currentRoute && $group['key'] !== 'home') { $section = $group['key']; break 2; } } }
+$section = match (true) {
+ str_starts_with($currentRoute, 'erp.sales.') => 'sales',
+ str_starts_with($currentRoute, 'erp.stock.'), str_starts_with($currentRoute, 'erp.products.') => 'inventory',
+ str_starts_with($currentRoute, 'erp.customers.') => 'finance',
+ $currentRoute === 'erp.profile' => 'settings',
+ default => 'home',
+};
 @endphp
 <!doctype html>
 <html lang="{{ app()->getLocale() }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}">
@@ -31,7 +36,7 @@ foreach ($nav as $group) { foreach ($group['items'] as $item) { if ($item['route
 <body>
 <div class="nexa-shell" id="nexa-shell">
 <header class="nexa-header">
-  <div class="nexa-brand"><span class="nexa-brand-mark" aria-hidden="true">▥</span><span><strong>FidaERP</strong><small>Enterprise • People • Progress</small></span></div>
+  <div class="nexa-brand"><span class="nexa-brand-mark" aria-hidden="true"><img src="{{ asset('fida-erp/fidaerp-mark.svg') }}" alt="" width="42" height="42"></span><span><strong>FidaERP</strong><small>Enterprise • People • Progress</small></span></div>
   <button type="button" class="nexa-mobile-menu" id="nexa-menu" aria-label="Toggle navigation" aria-expanded="false">☰</button>
   <div class="nexa-global-search"><span aria-hidden="true">⌕</span><input id="nexa-search" type="search" placeholder="Search modules, transactions, customers, products..." aria-label="Search navigation"><kbd>⌘ K</kbd></div>
   <div class="nexa-header-actions"><span class="nexa-header-icon" title="Notifications">♧</span><span class="nexa-header-icon" title="Help">ⓘ</span><span class="nexa-header-icon" title="Applications">▦</span><div class="nexa-profile"><span class="nexa-avatar">{{ strtoupper(substr(auth('erp_tenant')->user()?->name ?? 'U',0,1)) }}</span><span><strong>{{ auth('erp_tenant')->user()?->name ?? 'User' }}</strong><small>{{ app('erp.current_tenant')->business_name }}</small></span></div></div>
@@ -48,7 +53,7 @@ foreach ($nav as $group) { foreach ($group['items'] as $item) { if ($item['route
 <div class="nexa-subnav-heading">{{ $group['label'] }}</div>
 @foreach($group['items'] as $item)
 @if($item['route'])
-<a class="nexa-subnav-link {{ $currentRoute === $item['route'] ? 'active' : '' }}" href="{{ route($item['route']) }}"><span class="nexa-link-icon">◇</span>{{ $item['label'] }}</a>
+<a class="nexa-subnav-link {{ $section === $group['key'] && $currentRoute === $item['route'] ? 'active' : '' }}" href="{{ route($item['route']) }}"><span class="nexa-link-icon">◇</span>{{ $item['label'] }}</a>
 @else
 <span class="nexa-subnav-link nexad-disabled" title="Module planned"><span class="nexa-link-icon">◇</span>{{ $item['label'] }}<small>Coming soon</small></span>
 @endif
