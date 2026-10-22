@@ -23,7 +23,7 @@
 
 Use the existing cPanel account's cron to process the dedicated queue reliably:
 
-\`* * * * * cd /home/fidaerp/staging/application && /usr/bin/flock -n /home/fidaerp/staging/application/storage/framework/erp-provision-worker.lock /usr/local/bin/php artisan queue:work database --queue=erp-provisioning --stop-when-empty --tries=1 --timeout=160 --max-time=180 >/dev/null 2>&1\`
+\`* * * * * cd /home/fidaerp/staging/application && /usr/bin/flock -n /home/fidaerp/.erp-provision-worker.lock /usr/local/bin/php artisan queue:work database --queue=erp-provisioning --stop-when-empty --tries=1 --timeout=160 --max-time=180 >/dev/null 2>&1\`
 
 The DB_QUEUE_RETRY_AFTER setting must exceed the worker timeout (default 210 seconds in this version). The worker must run under the authorized fidaerp hosting account.
 
