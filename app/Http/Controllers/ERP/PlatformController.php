@@ -18,6 +18,7 @@ final class PlatformController extends Controller
        ->select('t.*','r.name as reseller')->orderByDesc('t.id')->simplePaginate(25),
   'plans'=>$db->table('erp_plans')->orderBy('price')->get(),
   'resellers'=>$db->table('erp_resellers')->orderBy('name')->get(),
+  'registrations'=>$db->table('erp_registration_requests')->orderByDesc('id')->limit(100)->get(),
   'invoices'=>$db->table('erp_platform_invoices')->orderByDesc('id')->limit(50)->get()]);
  }
  public function plan(Request $request){
