@@ -1,78 +1,77 @@
 @extends('erp.layout')
+@section('title','Dashboard')
 @section('content')
-<div class="nexa-page-head">
- <div><h1>{{ __('erp::ui.dashboard') }}</h1><p>Here's what's happening across your business today.</p></div>
- <div class="nexa-page-tools"><span class="nexa-tool">▤ {{ app('erp.current_tenant')->business_name }}</span><span class="nexa-tool">▦ {{ now()->format('D, d M Y') }}</span><a href="{{ route('erp.sales.create') }}" class="nexa-tool primary">＋ {{ __('erp::ui.new_invoice') }}</a></div>
+@php
+$posted=(int)$metrics['postedCount'];$draft=(int)$metrics['draftCount'];$all=max(1,$posted+$draft);
+$postedPct=round($posted*100/$all);$draftPct=round($draft*100/$all);
+$categoryTotal=max(0.000001,(float)$metrics['categories']->sum('amount'));
+$colors=['#1379f8','#04bda4','#ffbc50','#ff713c','#a858f7'];
+$gradient=[];$start=0;
+foreach($metrics['categories'] as $i=>$category){$end=$start+max(0,100*(float)$category->amount/$categoryTotal);$gradient[]=$colors[$i%5].' '.round($start,3).'% '.round($end,3).'%';$start=$end;}
+if($start<100)$gradient[]='#edf2f9 '.round($start,3).'% 100%';
+$maxBar=max(1,...array_map(fn($m)=>max($m['revenue'],$m['expenses']),$metrics['monthly']));
+@endphp
+<div class="fida-page-head">
+<div><h1>Good {{ now()->hour<12?'morning':(now()->hour<17?'afternoon':'evening') }}, {{ strtok(auth('erp_tenant')->user()->name,' ') }}</h1><p>Here's what's happening across your enterprise today.</p></div>
+<div class="fida-page-controls"><span class="fida-filter"><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#building-2"></use></svg>{{ app('erp.current_tenant')->business_name }}</span><span class="fida-filter"><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#calendar"></use></svg>{{ now()->format('D, d M Y') }}</span><button class="fida-action-primary" type="button" id="fida-dashboard-actions"><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#plus"></use></svg> Quick Actions</button></div>
 </div>
-<div class="nexa-kpis">
- <a class="nexa-kpi" href="{{ route('erp.customers.index') }}"><span class="nexa-kpi-icon teal">♧</span><span class="nexa-kpi-body"><span class="nexa-kpi-label">{{ __('erp::ui.customers') }}</span><span class="nexa-kpi-value">{{ number_format($counts['customers'] ?? 0) }}</span><span class="nexa-kpi-sub">Customer records</span></span></a>
- <a class="nexa-kpi" href="{{ route('erp.products.index') }}"><span class="nexa-kpi-icon">⬡</span><span class="nexa-kpi-body"><span class="nexa-kpi-label">{{ __('erp::ui.products') }}</span><span class="nexa-kpi-value">{{ number_format($counts['products'] ?? 0) }}</span><span class="nexa-kpi-sub">Catalog items</span></span></a>
- <a class="nexa-kpi" href="{{ route('erp.sales.index') }}"><span class="nexa-kpi-icon">▤</span><span class="nexa-kpi-body"><span class="nexa-kpi-label">Posted invoices</span><span class="nexa-kpi-value">{{ number_format($counts['posted'] ?? 0) }}</span><span class="nexa-kpi-sub">Confirmed sales</span></span></a>
- <a class="nexa-kpi" href="{{ route('erp.sales.index') }}"><span class="nexa-kpi-icon">▧</span><span class="nexa-kpi-body"><span class="nexa-kpi-label">Draft invoices</span><span class="nexa-kpi-value">{{ number_format($counts['drafts'] ?? 0) }}</span><span class="nexa-kpi-sub">Awaiting posting</span></span></a>
+@include('erp.dashboard._kpis')
+<div class="fida-board">
+<section class="fida-panel">
+<div class="fida-panel-heading"><h2>Sales by Product Category</h2><a href="{{ route('erp.analytics.index') }}">View Details →</a></div>
+<div class="fida-panel-body fida-chart-donut">
+ <div class="fida-donut" style="background:conic-gradient({{ implode(',',$gradient) }})"><div class="fida-donut-hole"><strong>{{ number_format((float)$metrics['categories']->sum('amount'),0) }}</strong><small>{{ $metrics['currency'] }} · Total sales</small></div></div>
+ <div class="fida-legend">@forelse($metrics['categories'] as $i=>$category)<div class="fida-legend-item"><span class="fida-color-dot" style="background:{{ $colors[$i%5] }}"></span>{{ $category->name }}<strong>{{ round(100*(float)$category->amount/$categoryTotal) }}%</strong></div>@empty<p class="fida-chart-note">No posted product sales yet.</p>@endforelse</div>
 </div>
-<div class="nexa-dashboard-grid">
- <section class="nexa-panel">
-  <div class="nexa-panel-head"><h2>Sales Status</h2><a href="{{ route('erp.sales.index') }}">View Details →</a></div>
-  <div class="nexa-panel-body"><div class="nexa-donut-layout">
-   @php($posted = (int)($counts['posted'] ?? 0))
-   @php($drafts = (int)($counts['drafts'] ?? 0))
-   @php($allSales = $posted + $drafts)
-   @php($postedPercent = $allSales ? round($posted * 100 / $allSales) : 0)
-   <div class="nexa-donut" style="background:conic-gradient(#12ad95 0 {{ $postedPercent }}%, #3985f7 {{ $postedPercent }}% 100%)"><div class="nexa-donut-inner"><strong>{{ number_format($allSales) }}</strong><small>Total invoices</small></div></div>
-   <div class="nexa-legend"><div class="nexa-legend-line"><span class="nexa-dot" style="background:#12ad95"></span>Posted<strong>{{ number_format($posted) }}</strong></div><div class="nexa-legend-line"><span class="nexa-dot" style="background:#3985f7"></span>Draft<strong>{{ number_format($drafts) }}</strong></div></div>
-  </div></div>
- </section>
- <section class="nexa-panel">
-  <div class="nexa-panel-head"><h2>Business Workspace</h2><a href="{{ route('erp.stock.index') }}">View Stock →</a></div>
-  <div class="nexa-panel-body">
-   <a href="{{ route('erp.stock.index') }}" class="nexa-alert-row"><span class="nexa-alert-symbol">⬡</span>Stock & receiving<strong>Open →</strong></a>
-   <a href="{{ route('erp.products.index') }}" class="nexa-alert-row"><span class="nexa-alert-symbol">▦</span>Product catalog<strong>Open →</strong></a>
-   <a href="{{ route('erp.customers.index') }}" class="nexa-alert-row"><span class="nexa-alert-symbol">♧</span>Customer directory<strong>Open →</strong></a>
-   <a href="{{ route('erp.sales.create') }}" class="nexa-alert-row"><span class="nexa-alert-symbol">▤</span>Create sales invoice<strong>Open →</strong></a>
-  </div>
- </section>
- <section class="nexa-panel nexa-calendar-panel">
-  <div class="nexa-panel-head"><h2>Calendar & Tasks</h2><span class="erp-muted">Calendar preview</span></div>
-  <div class="nexa-panel-body">
-   <div class="nexa-calendar-month">{{ now()->format('F Y') }}</div>
-   <div class="nexa-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
-   <div class="nexa-calendar-dates">@for($i=0;$i<now()->startOfMonth()->dayOfWeek;$i++)<span></span>@endfor @for($day=1;$day<=now()->daysInMonth;$day++)<span class="{{ $day===now()->day ? 'today' : '' }}">{{ $day }}</span>@endfor</div>
-   <div class="nexa-task"><strong>Task management</strong><small>Scheduling and approval workflows are planned for a later module release.</small></div>
-  </div>
- </section>
- <section class="nexa-panel">
-  <div class="nexa-panel-head"><h2>Sales Summary</h2><a href="{{ route('erp.sales.index') }}">View Details →</a></div>
-  <div class="nexa-panel-body"><div class="nexa-kpi-value">{{ number_format($allSales) }}</div><p class="erp-muted">Total recorded invoices</p><div style="height:9px;border-radius:12px;background:#e7edf6;overflow:hidden"><div style="height:100%;width:{{ $postedPercent }}%;background:#1677ef"></div></div><div class="nexa-legend-line"><span class="nexa-dot" style="background:#1677ef"></span>Posted invoices<strong>{{ number_format($posted) }}</strong></div><div class="nexa-legend-line"><span class="nexa-dot" style="background:#e7edf6"></span>Draft invoices<strong>{{ number_format($drafts) }}</strong></div></div>
- </section>
- <section class="nexa-panel">
-  <div class="nexa-panel-head"><h2>Module Overview</h2><span class="erp-muted">Current implementation</span></div>
-  <div class="nexa-panel-body">
-   <a href="{{ route('erp.sales.index') }}" class="nexa-alert-row"><span class="nexa-alert-symbol">▤</span>Sales and invoicing<strong>Available</strong></a>
-   <a href="{{ route('erp.stock.index') }}" class="nexa-alert-row"><span class="nexa-alert-symbol">⬡</span>Stock receiving<strong>Available</strong></a>
-   <div class="nexa-alert-row"><span class="nexa-alert-symbol">◷</span>Approval queue<strong>Planned</strong></div>
-   <div class="nexa-alert-row"><span class="nexa-alert-symbol">♧</span>Payroll & HR<strong>Planned</strong></div>
-  </div>
- </section>
- <section class="nexa-panel nexa-calendar-panel">
-  <div class="nexa-panel-head"><h2>Quick Actions</h2><span class="erp-muted">Shortcuts</span></div>
-  <div class="nexa-panel-body" style="display:grid;gap:9px">
-   <a href="{{ route('erp.sales.create') }}" class="erp-btn">＋ New Invoice</a>
-   <a href="{{ route('erp.customers.index') }}" class="erp-btn secondary">Customer Management</a>
-   <a href="{{ route('erp.products.index') }}" class="erp-btn secondary">Product Management</a>
-   <a href="{{ route('erp.stock.index') }}" class="erp-btn secondary">Inventory Management</a>
-  </div>
- </section>
- <section class="nexa-panel nexa-panel-wide">
-  <div class="nexa-panel-head"><h2>{{ __('erp::ui.recent_invoices') }}</h2><a href="{{ route('erp.sales.index') }}">View All →</a></div>
-  <div class="nexa-data-tools"><input id="nexa-invoice-filter" type="search" placeholder="Search by invoice number, customer..."><select id="nexa-invoice-status"><option value="">All statuses</option><option value="posted">Posted</option><option value="draft">Draft</option></select><a href="{{ route('erp.sales.index') }}" class="nexa-tool" style="min-width:auto">All invoices →</a></div>
-  <div class="nexa-table-scroll"><table class="nexa-table"><thead><tr><th>Invoice No.</th><th>Customer</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead><tbody id="nexa-invoice-rows">
-   @forelse($recent as $sale)<tr data-status="{{ strtolower($sale->status) }}"><td><a href="{{ route('erp.sales.index') }}">{{ $sale->number }}</a></td><td>{{ $sale->customer }}</td><td>{{ $sale->total }} {{ $sale->currency_code }}</td><td><span class="nexa-status {{ $sale->status }}">{{ ucfirst($sale->status) }}</span></td><td><a href="{{ route('erp.sales.index') }}">View →</a></td></tr>@empty<tr><td colspan="5">No invoices yet. Create your first invoice to get started.</td></tr>@endforelse
-  </tbody></table></div>
- </section>
+</section>
+<section class="fida-panel">
+<div class="fida-panel-heading"><h2>Revenue & Expense Trend</h2><a href="{{ route('erp.analytics.index') }}">View Details →</a></div>
+<div class="fida-panel-body"><div class="fida-row" style="justify-content:flex-end;font-size:11px;gap:15px"><span><span class="fida-color-dot" style="display:inline-block;background:#1482f8"></span> Revenue</span><span><span class="fida-color-dot" style="display:inline-block;background:#14bca2"></span> Expenses</span></div>
+<div class="fida-chart-bars">@foreach($metrics['monthly'] as $month)<div class="fida-chart-group" title="{{ $month['label'] }}: Revenue {{ number_format($month['revenue'],2) }}, Expenses {{ number_format($month['expenses'],2) }}"><span style="--bar-height:{{ max(1,round(max(0,$month['revenue'])/$maxBar*88)) }}%"></span><span class="expense" style="--bar-height:{{ max(1,round(max(0,$month['expenses'])/$maxBar*88)) }}%"></span><em>{{ $month['label'] }}</em></div>@endforeach</div>
+<p class="fida-chart-note">{{ $metrics['currency'] }} · Posted journal totals (six months)</p></div>
+</section>
+<section class="fida-panel">
+<div class="fida-panel-heading"><h2>Calendar & Tasks</h2><a href="{{ route('erp.profile') }}">View Profile →</a></div>
+<div class="fida-panel-body"><div class="fida-calendar-month">{{ now()->format('F Y') }}</div><div class="fida-calendar-grid">
+@foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $d)<span class="weekday">{{ $d }}</span>@endforeach
+@for($n=0;$n<now()->copy()->startOfMonth()->dayOfWeek;$n++)<span></span>@endfor
+@for($d=1;$d<=now()->daysInMonth;$d++)<span class="{{ $d===now()->day?'current':'' }}">{{ $d }}</span>@endfor
+</div><div class="fida-mini-task"><strong>Tasks and approvals</strong><small>Module scheduled for implementation. No sample events are shown.</small></div></div>
+</section>
+<section class="fida-panel">
+<div class="fida-panel-heading"><h2>Order Fulfillment Status</h2><a href="{{ route('erp.sales.index') }}">View Details →</a></div>
+<div class="fida-panel-body fida-chart-donut"><div class="fida-donut" style="background:conic-gradient(#08bb9c 0 {{ $postedPct }}%,#3990f8 {{ $postedPct }}% 100%)"><div class="fida-donut-hole"><strong>{{ number_format($posted+$draft) }}</strong><small>Total invoices</small></div></div>
+<div class="fida-legend"><div class="fida-legend-item"><span class="fida-color-dot" style="background:#0abb9b"></span>Posted<strong>{{ $posted }} ({{ $postedPct }}%)</strong></div><div class="fida-legend-item"><span class="fida-color-dot" style="background:#3990f8"></span>Draft<strong>{{ $draft }} ({{ $draftPct }}%)</strong></div><p class="fida-chart-note">Invoice posting status only. Delivery fulfillment tracking is not available.</p></div>
+</div>
+</section>
+<section class="fida-panel">
+<div class="fida-panel-heading"><h2>Alerts & Notifications</h2><a href="{{ route('erp.stock.index') }}">Inventory →</a></div>
+<div class="fida-panel-body">
+<div class="fida-insight-row"><svg class="fi fida-traffic"><use href="{{ asset('fida-erp/ui-icons.svg') }}#alert-triangle"></use></svg>Low-stock balances <b class="fida-traffic">{{ $metrics['lowStock'] }} records</b></div>
+<div class="fida-insight-row"><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#receipt"></use></svg>Unposted sales invoices <b>{{ $draft }} drafts</b></div>
+<div class="fida-insight-row"><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#wallet"></use></svg>Outstanding receivables <b>{{ number_format($metrics['outstanding'],0) }} {{ $metrics['currency'] }}</b></div>
+<div class="fida-insight-row"><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#truck"></use></svg>Recorded goods receipts <b>{{ $metrics['purchaseReceipts'] }}</b></div>
+</div>
+</section>
+<section class="fida-panel">
+<div class="fida-panel-heading"><h2>Workspace Overview</h2><a href="{{ route('erp.settings.index') }}">Settings →</a></div>
+<div class="fida-panel-body">
+<div class="fida-insight-row">Customers <b>{{ number_format($metrics['customers']) }}</b></div>
+<div class="fida-insight-row">Suppliers <b>{{ number_format($metrics['suppliers']) }}</b></div>
+<div class="fida-insight-row">Products <b>{{ number_format($metrics['products']) }}</b></div>
+<div class="fida-insight-row">Active employees <b>{{ number_format($metrics['employees']) }}</b></div>
+</div>
+</section>
+<section class="fida-panel fida-full">
+<div class="fida-panel-heading"><h2>Recent Transactions</h2><a href="{{ route('erp.sales.index') }}">View All →</a></div>
+<div class="fida-table-wrap"><table class="fida-table"><thead><tr><th>Ref No.</th><th>Date</th><th>Type</th><th>Party / Customer</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+@forelse($metrics['recent'] as $sale)
+<tr><td><a href="{{ route('erp.sales.index') }}">{{ $sale->number }}</a></td><td>{{ \Illuminate\Support\Carbon::parse($sale->created_at)->format('d M Y') }}</td><td>Sales Invoice</td><td>{{ $sale->customer }}</td><td>{{ number_format((float)$sale->total,2) }} {{ $sale->currency_code }}</td><td><span class="fida-pill {{ $sale->status }}">{{ ucfirst($sale->status) }}</span></td><td><a href="{{ route('erp.sales.pdf',$sale->id) }}">PDF</a></td></tr>
+@empty<tr><td colspan="7" class="fida-empty">No transactions. Use Quick Actions to create your first sale.</td></tr>@endforelse
+</tbody></table></div>
+</section>
 </div>
 @endsection
 @section('scripts')
-<script>
-(function(){const q=document.getElementById('nexa-invoice-filter'),s=document.getElementById('nexa-invoice-status');function filter(){document.querySelectorAll('#nexa-invoice-rows tr').forEach(r=>{r.hidden=!(r.textContent.toLowerCase().includes(q.value.toLowerCase())&&(!s.value||r.dataset.status===s.value));});}q?.addEventListener('input',filter);s?.addEventListener('change',filter);})();
-</script>
+<script>document.getElementById('fida-dashboard-actions')?.addEventListener('click',()=>document.getElementById('fida-actions-toggle')?.click())</script>
 @endsection

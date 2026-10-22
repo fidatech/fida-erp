@@ -8,11 +8,40 @@ use Illuminate\Support\Facades\DB;
 use DomainException;
 final class SalesController extends Controller
 {
-    public function index(){
-        $rows=DB::connection('erp_tenant')->table('sales_invoices as s')->join('customers as c','c.id','=','s.customer_id')
-            ->select('s.id','s.number','s.total','s.paid','s.currency_code','s.status','s.created_at','c.name as customer')
-            ->orderByDesc('s.id')->cursorPaginate(25);
-        return view('erp.sales.index',['rows'=>$rows]);
+    public function index(Request $request){
+        $input=$request->validate([
+            'q'=>'nullable|string|max:100',
+            'status'=>'nullable|in:draft,posted',
+            'from'=>'nullable|date_format:Y-m-d',
+            'to'=>'nullable|date_format:Y-m-d'
+        ]);
+        $filters=[
+            'q'=>trim((string)($input['q']??'')),
+            'status'=>$input['status']??'',
+            'from'=>$input['from']??'',
+            'to'=>$input['to']??''
+        ];
+        $db=DB::connection('erp_tenant');
+        $query=$db->table('sales_invoices as s')->join('customers as c','c.id','=','s.customer_id');
+        if($filters['q']!==''){
+            $term=$filters['q'];
+            $query->where(fn($q)=>$q->where('s.number','like',$term.'%')->orWhere('c.name','like',$term.'%'));
+        }
+        if($filters['status']!=='')$query->where('s.status',$filters['status']);
+        if($filters['from']!=='')$query->whereDate('s.created_at','>=',$filters['from']);
+        if($filters['to']!=='')$query->whereDate('s.created_at','<=',$filters['to']);
+        $rows=(clone $query)->select('s.id','s.number','s.total','s.paid','s.currency_code','s.status','s.created_at','c.name as customer')
+            ->orderByDesc('s.id')->cursorPaginate(25)->withQueryString();
+        $posted=$db->table('sales_invoices')->where('status','posted');
+        $totals=(clone $posted)->selectRaw('COALESCE(SUM(total*fx_rate),0) as value, COALESCE(SUM((total-paid)*fx_rate),0) as due')->first();
+        $stats=[
+            'all'=>$db->table('sales_invoices')->count(),
+            'posted'=>(clone $posted)->count(),
+            'value'=>(float)$totals->value,
+            'outstanding'=>(float)$totals->due,
+            'currency'=>$db->table('company_settings')->value('base_currency')
+        ];
+        return view('erp.sales.index',compact('rows','filters','stats'));
     }
     public function create(){return view('erp.sales.create',['warehouses'=>DB::connection('erp_tenant')->table('warehouses')->orderBy('name')->get(),
         'currencies'=>DB::connection('erp_tenant')->table('currencies')->where('active',1)->get(),
