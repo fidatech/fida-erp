@@ -74,7 +74,7 @@ final class ProvisionErpTenant extends Command
                 DB::connection(config('erp.central_connection','mysql'))->transaction(function()use($registration,$tenant){
                     $db=DB::connection(config('erp.central_connection','mysql'));
                     $updated=$db->table('erp_registration_requests')->where('id',$registration->id)->where('status','reviewed')->update(['status'=>'approved','updated_at'=>now()]);
-                    if($updated!==1) throw new \\RuntimeException('Registration status changed during provisioning');
+                    if($updated!==1) throw new \RuntimeException('Registration status changed during provisioning');
                     $db->table('erp_platform_audit_logs')->insert(['actor'=>'artisan:erp:provision','event'=>'registration.provisioned','tenant_id'=>$tenant->id,'context'=>json_encode(['registration_id'=>$registration->id,'email'=>$registration->email]),'created_at'=>now(),'updated_at'=>now()]);
                 });
             }
