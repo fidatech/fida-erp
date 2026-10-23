@@ -54,7 +54,7 @@ final class SalesController extends Controller
             'lines.*.quantity'=>'required|numeric|gt:0','lines.*.unit_price'=>'required|numeric|min:0',
             'lines.*.discount'=>'nullable|numeric|min:0','lines.*.tax'=>'nullable|numeric|min:0']);
         try{$id=$service->draft($input);}catch(DomainException|\InvalidArgumentException $e){return back()->withErrors(['sale'=>$e->getMessage()])->withInput();}
-        return redirect()->route('erp.sales.index')->with('success',__('erp::ui.invoice_drafted').' #'.$id);
+        return redirect()->route('erp.sales.index',['draft'=>$id])->with('success',__('erp::ui.invoice_drafted').' #'.$id);
     }
     public function receivePayment(Request $request, int $id, SettlementService $settlements){
         $data=$request->validate(['request_key'=>'required|uuid','amount'=>'required|numeric|gt:0']);
@@ -64,6 +64,6 @@ final class SalesController extends Controller
     }
     public function post(int $id,SaleService $service){
         try{$service->post($id);}catch(DomainException|\InvalidArgumentException $e){return back()->withErrors(['sale'=>$e->getMessage()]);}
-        return back()->with('success',__('erp::ui.invoice_posted'));
+        return redirect()->route('erp.sales.index',['pay'=>$id])->with('success',__('erp::ui.invoice_posted'));
     }
 }
