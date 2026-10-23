@@ -12,7 +12,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->prependToPriorityList(\Illuminate\Auth\Middleware\Authenticate::class, \App\Http\Middleware\ResolveErpTenant::class);
+        $middleware->prependToPriorityList(\Illuminate\Session\Middleware\StartSession::class, \App\Http\Middleware\ResolveErpTenant::class);
         $middleware->redirectGuestsTo(function (Request $request) {
             return $request->is('erp') || $request->is('erp/*')
                 ? route('erp.login') : route('erp.platform.login');
