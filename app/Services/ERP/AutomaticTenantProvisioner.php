@@ -127,7 +127,7 @@ final class AutomaticTenantProvisioner
                 }
                 $db->transaction(function () use ($db,$tenant,$run,$registrationId) {
                     $db->table('erp_tenants')->where('id',$tenant->id)->update([
-                        'status'=>'active','suspended_at'=>null,'updated_at'=>now()
+                        'status'=>'active','suspended_at'=>null,'trial_ends_at'=>now()->addDays(7),'updated_at'=>now()
                     ]);
                     $db->table('erp_registration_requests')->where('id',$registrationId)
                         ->where('status','provisioning')->update(['status'=>'approved','updated_at'=>now()]);

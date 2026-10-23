@@ -15,6 +15,10 @@ final class ResolveErpTenant
     {
         $tenant = Tenant::query()->where('domain', strtolower($request->getHost()))->first();
         abort_unless($tenant && $tenant->status === 'active' && is_null($tenant->suspended_at), 404);
+        if ($tenant->trial_ends_at && $tenant->trial_ends_at->isPast()) {
+            $hasPaid = $tenant->subscriptions()->where('status','active')->where(function ($q) {$q->whereNull('ends_at')->orWhere('ends_at','>',now());})->exists();
+            abort_unless($hasPaid, 403, 'Your free trial has expired. Please contact FidaERP support to renew.');
+        }
         $priorGuard=Auth::getDefaultDriver();
         $this->connector->connect($tenant);
         Auth::forgetGuards();
