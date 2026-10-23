@@ -43,7 +43,7 @@ final class SalesController extends Controller
         ];
         return view('erp.sales.index',compact('rows','filters','stats'));
     }
-    public function create(){return view('erp.sales.create',['warehouses'=>DB::connection('erp_tenant')->table('warehouses')->orderBy('name')->get(),
+    public function create(){return view('erp.sales.create',['warehouses'=>DB::connection('erp_tenant')->table('warehouses')->orderBy('name')->get(),'branches'=>DB::connection('erp_tenant')->table('branches')->orderBy('name')->get(),
         'currencies'=>DB::connection('erp_tenant')->table('currencies')->where('active',1)->get(),
         'base'=>DB::connection('erp_tenant')->table('company_settings')->value('base_currency')]);}
     public function store(Request $request,SaleService $service){

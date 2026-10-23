@@ -21,6 +21,8 @@ Route::middleware(['web','erp.tenant'])->prefix('erp')->name('erp.')->group(func
     Route::post('login',[AuthController::class,'login'])->middleware('throttle:6,1')->name('login.submit');
     Route::middleware(['auth:erp_tenant',ErpLocale::class])->group(function(){
         Route::post('logout',[AuthController::class,'logout'])->name('logout');
+        Route::post('quick-create/warehouse',[\App\Http\Controllers\ERP\QuickCreateController::class,'warehouse'])->middleware(ErpPermission::class.':settings.manage')->name('quick.warehouse');
+        Route::post('quick-create/currency',[\App\Http\Controllers\ERP\QuickCreateController::class,'currency'])->middleware(ErpPermission::class.':settings.manage')->name('quick.currency');
         Route::get('/',DashboardController::class)->middleware(ErpPermission::class.':dashboard.view')->name('dashboard');
         Route::post('locale',LocaleController::class)->name('locale');
         Route::get('profile',[ProfileController::class,'index'])->name('profile');
