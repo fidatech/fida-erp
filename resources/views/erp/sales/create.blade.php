@@ -29,6 +29,14 @@
 <a class="erp-btn secondary" href="{{ route('erp.sales.index') }}">Cancel</a>
 <button class="erp-btn" type="submit">Save Draft Invoice →</button>
 </div></form>
+<dialog id="quick-customer-modal" style="border:1px solid #dbe5ef;border-radius:14px;padding:25px;width:min(480px,95vw)">
+<form id="quick-customer-form" action="{{ route('erp.customers.store') }}" method="POST">@csrf
+<h2>Add customer</h2><p id="quick-customer-error" style="color:#b42332" role="alert"></p>
+@foreach(['name'=>'Customer name','phone'=>'Phone','email'=>'Email','address'=>'Address'] as $field=>$label)
+<p><label class="erp-label" for="quick-{{ $field }}">{{ $label }}</label><input class="erp-field" id="quick-{{ $field }}" name="{{ $field }}" @required($field==='name')></p>
+@endforeach
+<button type="button" class="erp-btn secondary" id="quick-customer-cancel">Cancel</button><button class="erp-btn" type="submit">Save customer</button>
+</form></dialog>
 @endsection
 @section('scripts')
 <style>@media(max-width:800px){.fida-sale-bottom{grid-template-columns:1fr!important}}#invoice-lines td{padding:7px}#invoice-lines .erp-field{min-width:65px}#invoice-lines .item-lookup{min-width:200px}</style>
@@ -37,7 +45,7 @@
  let n=0;const rows=document.getElementById('invoice-lines'),customerURL=@js(route('erp.customers.select2')),variantURL=@js(route('erp.products.select2')),base=@js($base);
  const lookup=async(url,q)=>{const res=await fetch(url+'?q='+encodeURIComponent(q),{credentials:'same-origin'});if(!res.ok)throw Error('Lookup failed');return (await res.json()).results};
  const selectLookup=(select,url)=>{
-  if(window.jQuery?.fn?.select2){window.jQuery(select).select2({width:'100%',minimumInputLength:1,ajax:{url,delay:250,data:x=>({q:x.term||''}),processResults:d=>d}})}
+  if(window.jQuery?.fn?.select2){window.jQuery(select).select2({width:'100%',minimumInputLength:0,ajax:{url,delay:250,data:x=>({q:x.term||''}),processResults:d=>{if(select.id==='customer')d.results.unshift({id:'__add_customer__',text:'＋ Add new customer...'});return d}}})}
   else{const f=document.createElement('input');f.className='erp-field';f.placeholder='Search...';select.before(f);let seq=0;f.oninput=async()=>{const current=++seq;try{const data=await lookup(url,f.value);if(seq!==current)return;select.replaceChildren(new Option('Choose',''));data.forEach(x=>{const o=new Option(x.text,x.id);o.dataset.price=x.price||'';select.add(o)})}catch(e){console.warn(e)}}}
  };
  const money=n=>(Number.isFinite(n)?n:0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -47,6 +55,22 @@
   document.getElementById('sale-subtotal').textContent=money(sub);document.getElementById('sale-discount').textContent=money(discount);document.getElementById('sale-tax').textContent=money(tax);document.getElementById('sale-total').textContent=money(sub-discount+tax);
  }
  selectLookup(document.getElementById('customer'),customerURL);
+const customerSelect=document.getElementById('customer');
+const customerModal=document.getElementById('quick-customer-modal');
+const customerForm=document.getElementById('quick-customer-form');
+const openCustomer=()=>{customerForm.reset();document.getElementById('quick-customer-error').textContent='';customerModal.showModal()};
+document.getElementById('quick-customer-cancel').onclick=()=>customerModal.close();
+if(window.jQuery?.fn?.select2)window.jQuery(customerSelect).on('select2:select',e=>{
+ if(String(e.params.data.id)==='__add_customer__'){window.jQuery(customerSelect).val(null).trigger('change');openCustomer()}
+});
+customerForm.addEventListener('submit',async e=>{
+ e.preventDefault();const button=customerForm.querySelector('[type=submit]');button.disabled=true;
+ try{const response=await fetch(customerForm.action,{method:'POST',body:new FormData(customerForm),credentials:'same-origin',headers:{Accept:'application/json'}});
+ const data=await response.json();if(!response.ok)throw Error(Object.values(data.errors||{}).flat().join(' ')||data.message||'Unable to save customer');
+ customerSelect.add(new Option(data.text,data.id,true,true));if(window.jQuery?.fn?.select2)window.jQuery(customerSelect).trigger('change');customerModal.close();
+ }catch(err){document.getElementById('quick-customer-error').textContent=err.message}finally{button.disabled=false}
+});
+
  document.getElementById('sale-currency').onchange=e=>{if(e.target.value===base)document.getElementById('sale-rate').value='1'};
  function add(){
   const i=n++,row=document.createElement('tr');
