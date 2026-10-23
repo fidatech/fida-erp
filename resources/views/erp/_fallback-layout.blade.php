@@ -3,28 +3,22 @@ $activeRoute = request()->route()?->getName() ?? '';
 $groups = [
 ['id'=>'home','label'=>'Home','icon'=>'home','links'=>[
  ['label'=>'Dashboard','route'=>'erp.dashboard','icon'=>'layout-dashboard'],
- ['label'=>'My Workspace','route'=>'erp.profile','icon'=>'user-round'],
- ['label'=>'KPI Overview','route'=>'erp.kpi.index','icon'=>'chart-column'],
- ['label'=>'Charts & Analytics','route'=>'erp.analytics.index','icon'=>'chart-pie'],
  ['label'=>'Notifications','route'=>null,'icon'=>'bell'],
- ['label'=>'Configuration','route'=>'erp.settings.index','icon'=>'settings']]],
+ ['label'=>'Workspace Help','route'=>null,'icon'=>'circle-help']]],
 ['id'=>'finance','label'=>'Finance','icon'=>'wallet','links'=>[
  ['label'=>'Financial Overview','route'=>'erp.finance.index','icon'=>'chart-column'],
- ['label'=>'General Ledger','route'=>'erp.finance.index','icon'=>'book-open'],
- ['label'=>'Trial Balance','route'=>'erp.finance.index','icon'=>'scale'],
- ['label'=>'Sales Invoices','route'=>'erp.sales.index','icon'=>'file-text'],
+ ['label'=>'General Ledger','route'=>null,'icon'=>'book-open'],
+ ['label'=>'Trial Balance','route'=>null,'icon'=>'scale'],
  ['label'=>'Cash & Banking','route'=>null,'icon'=>'landmark']]],
 ['id'=>'inventory','label'=>'Inventory','icon'=>'package','links'=>[
  ['label'=>'Inventory Overview','route'=>'erp.stock.index','icon'=>'package'],
  ['label'=>'Products & Variants','route'=>'erp.products.index','icon'=>'boxes'],
- ['label'=>'Goods Receiving','route'=>'erp.stock.index','icon'=>'truck'],
  ['label'=>'Warehouse Transfers','route'=>'erp.stock.transfers','icon'=>'arrow-left-right'],
  ['label'=>'Stock Counts','route'=>null,'icon'=>'clipboard-list']]],
 ['id'=>'procurement','label'=>'Procurement','icon'=>'shopping-cart','links'=>[
- ['label'=>'Suppliers & Receiving','route'=>'erp.stock.index','icon'=>'truck'],
+ ['label'=>'Supplier Directory','route'=>null,'icon'=>'truck'],
  ['label'=>'Purchase Orders','route'=>null,'icon'=>'file-text']]],
 ['id'=>'sales','label'=>'Sales','icon'=>'receipt','links'=>[
- ['label'=>'Sales Overview','route'=>'erp.sales.index','icon'=>'chart-column'],
  ['label'=>'Sales Invoices','route'=>'erp.sales.index','icon'=>'receipt'],
  ['label'=>'Create Sale','route'=>'erp.sales.create','icon'=>'plus'],
  ['label'=>'Customers','route'=>'erp.customers.index','icon'=>'users'],
@@ -38,15 +32,13 @@ $groups = [
 ['id'=>'manufacturing','label'=>'Manufacturing','icon'=>'factory','links'=>[
  ['label'=>'Production Orders','route'=>null,'icon'=>'factory']]],
 ['id'=>'logistics','label'=>'Logistics','icon'=>'truck','links'=>[
- ['label'=>'Stock Transfers','route'=>'erp.stock.transfers','icon'=>'arrow-left-right']]],
+ ['label'=>'Delivery & Dispatch','route'=>null,'icon'=>'truck']]],
 ['id'=>'reports','label'=>'Reports','icon'=>'chart-no-axes-column','links'=>[
- ['label'=>'KPI Overview','route'=>'erp.kpi.index','icon'=>'chart-column'],
- ['label'=>'Charts & Analytics','route'=>'erp.analytics.index','icon'=>'chart-pie'],
- ['label'=>'Financial Reports','route'=>'erp.finance.index','icon'=>'file-text']]],
+ ['label'=>'Financial Reports','route'=>null,'icon'=>'file-text']]],
 ['id'=>'settings','label'=>'Settings','icon'=>'settings','links'=>[
  ['label'=>'Company Profile','route'=>'erp.settings.index','icon'=>'building-2'],
- ['label'=>'Branches','route'=>'erp.settings.index','icon'=>'git-branch'],
- ['label'=>'Financial Periods','route'=>'erp.settings.index','icon'=>'calendar'],
+ ['label'=>'Branches','route'=>null,'icon'=>'git-branch'],
+ ['label'=>'Financial Periods','route'=>null,'icon'=>'calendar'],
  ['label'=>'My Profile','route'=>'erp.profile','icon'=>'user-round']]],
 ];
 $section = match(true) {
@@ -107,7 +99,7 @@ $rtl=in_array(app()->getLocale(),['fa','ps'],true);
  <div class="fida-nav-heading">{{ $group['label'] }}</div>
  @foreach($group['links'] as $link)
  @if($link['route'])
- <a class="fida-nav-link {{ $link['route']===$activeRoute?'active':'' }}" href="{{ route($link['route']) }}"><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#{{ $link['icon'] }}"></use></svg><span>{{ $link['label'] }}</span></a>
+ <a class="fida-nav-link {{ $link['route']===$activeRoute?'active':'' }}" href="{{ route($link['route']) }}" @if($link['route']===$activeRoute) aria-current="page" @endif><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#{{ $link['icon'] }}"></use></svg><span>{{ $link['label'] }}</span></a>
  @else
  <span class="fida-nav-link fida-nav-disabled" title="Not implemented yet"><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#{{ $link['icon'] }}"></use></svg><span>{{ $link['label'] }}</span><small>Planned</small></span>
  @endif
@@ -115,7 +107,7 @@ $rtl=in_array(app()->getLocale(),['fa','ps'],true);
 </div>
 @endforeach
 <div class="fida-sidenav-bottom">
-<a class="fida-nav-link" href="{{ route('erp.settings.index') }}"><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#settings"></use></svg>Settings</a>
+<a class="fida-nav-link {{ $section==='settings' ? 'active' : '' }}" href="{{ route('erp.settings.index') }}"><svg class="fi"><use href="{{ asset('fida-erp/ui-icons.svg') }}#settings"></use></svg>Settings</a>
 <form action="{{ route('erp.locale') }}" method="POST">@csrf<label class="sr-only" for="fida-language">Language</label><select id="fida-language" class="erp-field" name="locale" onchange="this.form.submit()"><option value="en" @selected(app()->getLocale()==='en')>English</option><option value="fa" @selected(app()->getLocale()==='fa')>دری</option><option value="ps" @selected(app()->getLocale()==='ps')>پښتو</option></select></form>
 <form method="POST" action="{{ route('erp.logout') }}">@csrf<button class="fida-logout" type="submit">Sign out ↗</button></form>
 </div>
