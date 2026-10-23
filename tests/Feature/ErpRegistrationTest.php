@@ -127,6 +127,14 @@ class ErpRegistrationTest extends TestCase
             ->table('erp_registration_requests')->count());
     }
 
+    public function test_honeypot_rejects_bot_submissions(): void
+    {
+        $payload = $this->registration("bot@example.com");
+        $payload["website"] = "https://spam.example";
+        $this->post(route("erp.register.submit"), $payload)->assertSessionHasErrors("website");
+        $this->assertSame(0, DB::connection("erp_registration_test")->table("erp_registration_requests")->count());
+    }
+
     public function test_registration_generates_expiring_hashed_verification_token(): void
     {
         $this->post(route('erp.register.submit'), $this->registration('verified@example.com'))
