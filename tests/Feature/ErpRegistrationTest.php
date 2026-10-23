@@ -5,6 +5,9 @@ namespace Tests\Feature;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Bus;
+use App\Jobs\ProcessErpRegistration;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -30,9 +33,15 @@ class ErpRegistrationTest extends TestCase
             $table->string('country');
             $table->string('password_hash');
             $table->string('status');
+            $table->string('verification_token_hash')->nullable();
+            $table->timestamp('verification_expires_at')->nullable();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->timestamp('verification_sent_at')->nullable();
             $table->timestamps();
         });
         RateLimiter::clear('erp-registration:127.0.0.1');
+        RateLimiter::clear('erp-resend:127.0.0.1');
+        Mail::fake();
     }
 
     protected function tearDown(): void
@@ -116,6 +125,53 @@ class ErpRegistrationTest extends TestCase
 
         $this->assertSame(3, DB::connection('erp_registration_test')
             ->table('erp_registration_requests')->count());
+    }
+
+    public function test_registration_generates_expiring_hashed_verification_token(): void
+    {
+        $this->post(route('erp.register.submit'), $this->registration('verified@example.com'))
+            ->assertRedirect(route('erp.register'));
+        $row = DB::connection('erp_registration_test')->table('erp_registration_requests')->first();
+        $this->assertNotNull($row->verification_token_hash);
+        $this->assertSame(64, strlen($row->verification_token_hash));
+        $this->assertNotNull($row->verification_expires_at);
+    }
+
+    public function test_verification_rejects_invalid_and_expired_tokens(): void
+    {
+        $this->post(route('erp.register.submit'), $this->registration('verify@example.com'));
+        $db = DB::connection('erp_registration_test');
+        $row = $db->table('erp_registration_requests')->first();
+        $this->get(route('erp.register.verify',['id'=>$row->id,'token'=>str_repeat('x',64)]))
+            ->assertSessionHasErrors('email');
+        $this->assertSame('pending',$db->table('erp_registration_requests')->first()->status);
+        $db->table('erp_registration_requests')->where('id',$row->id)->update([
+            'verification_token_hash'=>hash('sha256',str_repeat('a',64)),
+            'verification_expires_at'=>now()->subMinute(),
+        ]);
+        $this->get(route('erp.register.verify',['id'=>$row->id,'token'=>str_repeat('a',64)]))
+            ->assertSessionHasErrors('email');
+        $this->assertSame('pending',$db->table('erp_registration_requests')->first()->status);
+    }
+
+    public function test_valid_verification_queues_provisioning_once(): void
+    {
+        Bus::fake();
+        $this->post(route('erp.register.submit'), $this->registration('verify@example.com'));
+        $db=DB::connection('erp_registration_test');
+        $row=$db->table('erp_registration_requests')->first();
+        $token=str_repeat('b',64);
+        $db->table('erp_registration_requests')->where('id',$row->id)->update([
+            'verification_token_hash'=>hash('sha256',$token),
+            'verification_expires_at'=>now()->addMinutes(30),
+        ]);
+        $url=route('erp.register.verify',['id'=>$row->id,'token'=>$token]);
+        $this->get($url)->assertSessionHas('success');
+        $this->assertSame('provisioning',$db->table('erp_registration_requests')->first()->status);
+        $this->assertNotNull($db->table('erp_registration_requests')->first()->email_verified_at);
+        Bus::assertDispatched(ProcessErpRegistration::class,1);
+        $this->get($url)->assertSessionHasErrors('email');
+        Bus::assertDispatched(ProcessErpRegistration::class,1);
     }
 
 }
