@@ -5,6 +5,7 @@ use App\Http\Middleware\ErpPlatformAdmin;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ERP\RegistrationController;
 Route::middleware('web')->group(function(){
+ Route::get('/register/progress',[RegistrationController::class,'progress'])->middleware('throttle:60,1')->name('erp.register.progress');
  Route::get('/register',[RegistrationController::class,'show'])->name('erp.register');
  Route::post('/register',[RegistrationController::class,'store'])->middleware('throttle:5,1')->name('erp.register.submit');
  Route::get('/register/verify/{id}/{token}',[RegistrationController::class,'verify'])->whereNumber('id')->middleware('throttle:12,1')->name('erp.register.verify');
