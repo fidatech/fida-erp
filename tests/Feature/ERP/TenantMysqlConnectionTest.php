@@ -56,7 +56,7 @@ final class TenantMysqlConnectionTest extends TestCase
 
                 $other = $suffix === 'A' ? $databases[2] : $databases[1];
                 try {
-                    DB::connection('erp_tenant')->select("SELECT COUNT(*) AS total FROM `{$other}`.information_schema_dummy");
+                    DB::connection('erp_tenant')->select("SELECT COUNT(*) AS total FROM `{$other}`.isolation_probe");
                     $this->fail('Tenant credentials unexpectedly accessed another tenant database.');
                 } catch (\Illuminate\Database\QueryException $e) {
                     $this->assertSame('42000', (string) $e->errorInfo[0]);
