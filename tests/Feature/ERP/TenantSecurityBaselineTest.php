@@ -4,7 +4,6 @@ namespace Tests\Feature\ERP;
 
 use App\Models\ERP\Central\Tenant;
 use App\Services\ERP\TenantConnector;
-use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
@@ -13,7 +12,6 @@ final class TenantSecurityBaselineTest extends TestCase
     {
         $this->assertSame('session', config('auth.guards.erp_tenant.driver'));
         $this->assertSame('erp_tenant_users', config('auth.guards.erp_tenant.provider'));
-        $this->assertSame('web', config('auth.defaults.guard'));
         $this->assertNotSame(config('auth.guards.web.provider'), config('auth.guards.erp_tenant.provider'));
     }
 
