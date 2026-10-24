@@ -41,6 +41,12 @@ jobs:
       ERP_TEST_CENTRAL_DATABASE: erp_test_central
       ERP_TEST_TENANT_A_DATABASE: erp_test_a
       ERP_TEST_TENANT_B_DATABASE: erp_test_b
+      ERP_TEST_CENTRAL_USER: erp_test_central_user
+      ERP_TEST_CENTRAL_PASSWORD: ci-central-test-only
+      ERP_TEST_TENANT_A_USER: erp_test_a_user
+      ERP_TEST_TENANT_A_PASSWORD: ci-tenant-a-test-only
+      ERP_TEST_TENANT_B_USER: erp_test_b_user
+      ERP_TEST_TENANT_B_PASSWORD: ci-tenant-b-test-only
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -54,6 +60,8 @@ jobs:
           docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
             CREATE DATABASE erp_test_a;
             CREATE DATABASE erp_test_b;
+            CREATE TABLE erp_test_a.isolation_probe (id INT PRIMARY KEY);
+            CREATE TABLE erp_test_b.isolation_probe (id INT PRIMARY KEY);
             CREATE USER 'erp_test_central_user'@'%' IDENTIFIED BY 'ci-central-test-only';
             CREATE USER 'erp_test_a_user'@'%' IDENTIFIED BY 'ci-tenant-a-test-only';
             CREATE USER 'erp_test_b_user'@'%' IDENTIFIED BY 'ci-tenant-b-test-only';
@@ -67,7 +75,7 @@ jobs:
             $pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=erp_test_a", "erp_test_a_user", "ci-tenant-a-test-only");
             echo "Disposable tenant A connection established\n";
           '
+      - name: Run database permission boundary test
+        run: php artisan test --filter TenantMysqlConnectionTest --stop-on-failure
       - name: Integration test readiness
-        run: |
-          echo "The Laravel two-tenant suite is intentionally incomplete."
-          echo "Do not treat this workflow as proof of tenant data isolation."
+        run: echo 'Application-level login and resource isolation tests remain incomplete.'
