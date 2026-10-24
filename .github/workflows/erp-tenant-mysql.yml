@@ -2,6 +2,10 @@ name: FidaERP Disposable MySQL Integration
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/erp-tenant-mysql.yml'
+      - 'tests/Feature/ERP/**'
 
 permissions:
   contents: read
