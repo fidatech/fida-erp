@@ -6,6 +6,11 @@ on:
     paths:
       - '.github/workflows/erp-tenant-mysql.yml'
       - 'tests/Feature/ERP/**'
+      - 'app/Http/Middleware/ResolveErpTenant.php'
+      - 'app/Services/ERP/TenantConnector.php'
+      - 'app/Http/Middleware/ErpPermission.php'
+      - 'app/Models/ERP/Tenant/**'
+      - 'routes/erp.php'
 
 permissions:
   contents: read
@@ -119,5 +124,5 @@ jobs:
         run: php artisan test --filter TenantHttpIsolationTest --stop-on-failure
       - name: Run database permission boundary test
         run: php artisan test --filter TenantMysqlConnectionTest --stop-on-failure
-      - name: Integration test readiness
-        run: echo 'Application-level login and resource isolation tests remain incomplete.'
+      - name: Verified test scope
+        run: echo 'Tenant HTTP login, authorized customer isolation, session replay, and MySQL permission boundary tests executed.'
