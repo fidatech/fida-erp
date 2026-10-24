@@ -99,6 +99,16 @@ jobs:
               created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
             );
             CREATE TABLE erp_test_b.customers LIKE erp_test_a.customers;
+            ALTER TABLE erp_test_a.customers ADD COLUMN phone VARCHAR(40) NULL, ADD COLUMN email VARCHAR(255) NULL;
+            ALTER TABLE erp_test_b.customers ADD COLUMN phone VARCHAR(40) NULL, ADD COLUMN email VARCHAR(255) NULL;
+            CREATE TABLE erp_test_a.roles (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100));
+            CREATE TABLE erp_test_b.roles LIKE erp_test_a.roles;
+            CREATE TABLE erp_test_a.permissions (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100));
+            CREATE TABLE erp_test_b.permissions LIKE erp_test_a.permissions;
+            CREATE TABLE erp_test_a.role_user (user_id BIGINT UNSIGNED, role_id BIGINT UNSIGNED);
+            CREATE TABLE erp_test_b.role_user LIKE erp_test_a.role_user;
+            CREATE TABLE erp_test_a.permission_role (role_id BIGINT UNSIGNED, permission_id BIGINT UNSIGNED);
+            CREATE TABLE erp_test_b.permission_role LIKE erp_test_a.permission_role;
           "
       - name: Lint tenant middleware and integration tests
         run: |
