@@ -89,6 +89,13 @@ final class TenantHttpIsolationTest extends TestCase
                 $this->assertFalse(app()->bound('erp.current_tenant'));
             }
 
+            // Tenant B's authenticated session must not authorize a request
+            // on tenant A, even though both fixtures use user ID 1.
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->getJson('http://tenant-a.erp.test/erp/customers/data')
+                ->assertUnauthorized();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+
             $this->withServerVariables(['HTTP_HOST' => 'unknown.erp.test'])
                 ->get('http://unknown.erp.test/erp/login')->assertNotFound();
 
