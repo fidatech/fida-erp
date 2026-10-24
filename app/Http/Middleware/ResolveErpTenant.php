@@ -18,6 +18,18 @@ final class ResolveErpTenant
         $priorGuard=Auth::getDefaultDriver();
         $this->connector->connect($tenant);
         Auth::forgetGuards();
+        // Sessions are scoped to a tenant even if a browser or reverse proxy
+        // incorrectly sends the same session cookie to multiple tenant hosts.
+        // This middleware runs after the web session middleware.
+        if ($request->hasSession()) {
+            $session = $request->session();
+            $boundTenant = $session->get('erp.bound_tenant_id');
+            if ($boundTenant !== null && (string) $boundTenant !== (string) $tenant->getKey()) {
+                $session->invalidate();
+                $session->regenerateToken();
+            }
+            $session->put('erp.bound_tenant_id', (string) $tenant->getKey());
+        }
         try { return $next($request); }
         finally { Auth::forgetGuards(); Auth::shouldUse($priorGuard); $this->connector->disconnect(); }
     }
