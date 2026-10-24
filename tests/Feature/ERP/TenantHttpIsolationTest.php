@@ -79,6 +79,9 @@ final class TenantHttpIsolationTest extends TestCase
             }
 
             foreach (['A', 'B'] as $suffix) {
+                // Independent browser sessions: tenant A's session must not
+                // accidentally be reused for tenant B's separate login.
+                $this->flushSession();
                 $host = 'tenant-'.strtolower($suffix).'.erp.test';
                 $response = $this->withServerVariables(['HTTP_HOST' => $host])
                     ->post('http://'.$host.'/erp/login', [
