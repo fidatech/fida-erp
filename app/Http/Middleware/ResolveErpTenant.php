@@ -21,6 +21,7 @@ final class ResolveErpTenant
         // Sessions are scoped to a tenant even if a browser or reverse proxy
         // incorrectly sends the same session cookie to multiple tenant hosts.
         // This middleware runs after the web session middleware.
+        try {
         if ($request->hasSession()) {
             $session = $request->session();
             $boundTenant = $session->get('erp.bound_tenant_id');
@@ -35,7 +36,7 @@ final class ResolveErpTenant
             }
             $session->put('erp.bound_tenant_id', (string) $tenant->getKey());
         }
-        try { return $next($request); }
+        return $next($request);
         finally { Auth::forgetGuards(); Auth::shouldUse($priorGuard); $this->connector->disconnect(); }
     }
 }
