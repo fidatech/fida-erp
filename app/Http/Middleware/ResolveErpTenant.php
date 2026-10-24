@@ -25,6 +25,10 @@ final class ResolveErpTenant
             $session = $request->session();
             $boundTenant = $session->get('erp.bound_tenant_id');
             if ($boundTenant !== null && (string) $boundTenant !== (string) $tenant->getKey()) {
+                // The guard may already have resolved an identically numbered
+                // user from another tenant during a previous request.
+                Auth::guard('erp_tenant')->logout();
+                Auth::forgetGuards();
                 $session->invalidate();
                 $session->regenerateToken();
             }
