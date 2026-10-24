@@ -19,6 +19,7 @@ final class TenantIsolationIntegrationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->markTestSkipped('FERP-011 integration harness disabled until tenant connector purge/transaction cleanup is proven safe.');
         if (getenv('ERP_RUN_ISOLATION_TESTS') !== '1') {
             $this->markTestSkipped('Set ERP_RUN_ISOLATION_TESTS=1 with disposable MySQL databases.');
         }
