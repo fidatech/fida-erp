@@ -53,6 +53,18 @@ final class TenantHttpIsolationTest extends TestCase
                     'code' => 'ONLY_'.$suffix, 'name' => 'Only tenant '.$suffix,
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
+                $userId = DB::connection($connection)->table('users')
+                    ->where('email', 'owner@example.test')->value('id');
+                $roleId = DB::connection($connection)->table('roles')
+                    ->insertGetId(['name' => 'Customer manager']);
+                $permissionId = DB::connection($connection)->table('permissions')
+                    ->insertGetId(['name' => 'customers.manage']);
+                DB::connection($connection)->table('role_user')->insert([
+                    'user_id' => $userId, 'role_id' => $roleId,
+                ]);
+                DB::connection($connection)->table('permission_role')->insert([
+                    'role_id' => $roleId, 'permission_id' => $permissionId,
+                ]);
                 $tenants[] = Tenant::create([
                     'business_name' => 'Test '.$suffix, 'slug' => 'ci-'.strtolower($suffix),
                     'domain' => 'tenant-'.strtolower($suffix).'.erp.test',
@@ -110,6 +122,25 @@ final class TenantHttpIsolationTest extends TestCase
                 ->getJson('http://tenant-b.erp.test/erp/customers/data')
                 ->assertUnauthorized();
             $this->assertFalse(app()->bound('erp.current_tenant'));
+
+            // Positive authorization: each logged-in user sees only the
+            // customer physically stored in their own tenant database.
+            foreach (['A', 'B'] as $suffix) {
+                $this->flushSession();
+                $host = 'tenant-'.strtolower($suffix).'.erp.test';
+                $this->withServerVariables(['HTTP_HOST' => $host])
+                    ->post('http://'.$host.'/erp/login', [
+                        'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                    ])->assertRedirect();
+                $response = $this->withServerVariables(['HTTP_HOST' => $host])
+                    ->getJson('http://'.$host.'/erp/customers/data');
+                $response->assertOk();
+                $codes = array_column($response->json('data'), 'code');
+                $this->assertContains('ONLY_'.$suffix, $codes);
+                $this->assertNotContains('ONLY_'.($suffix === 'A' ? 'B' : 'A'), $codes);
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            }
+            $this->flushSession();
 
             $this->withServerVariables(['HTTP_HOST' => 'unknown.erp.test'])
                 ->get('http://unknown.erp.test/erp/login')->assertNotFound();
