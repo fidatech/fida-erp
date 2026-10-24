@@ -37,6 +37,6 @@ final class ResolveErpTenant
             $session->put('erp.bound_tenant_id', (string) $tenant->getKey());
         }
         return $next($request);
-        finally { Auth::forgetGuards(); Auth::shouldUse($priorGuard); $this->connector->disconnect(); }
+        } finally { Auth::forgetGuards(); Auth::shouldUse($priorGuard); $this->connector->disconnect(); }
     }
 }
