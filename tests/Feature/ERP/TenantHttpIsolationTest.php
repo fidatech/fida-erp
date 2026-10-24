@@ -92,6 +92,19 @@ final class TenantHttpIsolationTest extends TestCase
             $this->withServerVariables(['HTTP_HOST' => 'unknown.erp.test'])
                 ->get('http://unknown.erp.test/erp/login')->assertNotFound();
 
+            // A fresh, unauthenticated session cannot read the customer API,
+            // even when a tenant hostname resolves successfully.
+            auth('erp_tenant')->logout();
+            auth()->forgetGuards();
+            $this->flushSession();
+            foreach (['A', 'B'] as $suffix) {
+                $host = 'tenant-'.strtolower($suffix).'.erp.test';
+                $this->withServerVariables(['HTTP_HOST' => $host])
+                    ->getJson('http://'.$host.'/erp/customers/data')
+                    ->assertUnauthorized();
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            }
+
             $tenants[1]->update(['suspended_at' => now()]);
             $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
                 ->get('http://tenant-b.erp.test/erp/login')->assertNotFound();
