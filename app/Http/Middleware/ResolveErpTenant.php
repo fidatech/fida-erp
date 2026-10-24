@@ -31,6 +31,7 @@ final class ResolveErpTenant
                 Auth::forgetGuards();
                 $session->invalidate();
                 $session->regenerateToken();
+                abort(401, 'Session belongs to a different tenant.');
             }
             $session->put('erp.bound_tenant_id', (string) $tenant->getKey());
         }
