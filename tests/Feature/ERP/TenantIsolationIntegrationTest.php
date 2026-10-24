@@ -20,7 +20,7 @@ final class TenantIsolationIntegrationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (env('ERP_RUN_ISOLATION_TESTS') !== '1') {
+        if (getenv('ERP_RUN_ISOLATION_TESTS') !== '1') {
             $this->markTestSkipped('Set ERP_RUN_ISOLATION_TESTS=1 with disposable MySQL databases.');
         }
         foreach (['ERP_TEST_CENTRAL_DATABASE','ERP_TEST_TENANT_A_DATABASE','ERP_TEST_TENANT_B_DATABASE'] as $key) {
@@ -31,13 +31,14 @@ final class TenantIsolationIntegrationTest extends TestCase
             $this->databases[$key] = $value;
         }
         $this->assertCount(3, array_unique($this->databases), 'Test databases must be distinct.');
+        $this->assertSame('testing', app()->environment(), 'Never run integration tests outside testing.');
         $mysql = config('database.connections.mysql');
         $mysql['driver'] = 'mysql';
         $mysql['database'] = $this->databases['ERP_TEST_CENTRAL_DATABASE'];
-        $mysql['username'] = env('ERP_TEST_CENTRAL_USER');
-        $mysql['password'] = env('ERP_TEST_CENTRAL_PASSWORD');
-        $mysql['host'] = env('ERP_TEST_DB_HOST', '127.0.0.1');
-        $mysql['port'] = env('ERP_TEST_DB_PORT', '3306');
+        $mysql['username'] = getenv('ERP_TEST_CENTRAL_USER');
+        $mysql['password'] = getenv('ERP_TEST_CENTRAL_PASSWORD');
+        $mysql['host'] = getenv('ERP_TEST_DB_HOST', '127.0.0.1');
+        $mysql['port'] = getenv('ERP_TEST_DB_PORT', '3306');
         config(['database.connections.mysql' => $mysql, 'session.driver' => 'array', 'session.domain' => null]);
         DB::purge('mysql');
         // Never use migrate:fresh here: these tests only create tables if absent
