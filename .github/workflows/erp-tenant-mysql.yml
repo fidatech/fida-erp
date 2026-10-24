@@ -100,6 +100,11 @@ jobs:
             );
             CREATE TABLE erp_test_b.customers LIKE erp_test_a.customers;
           "
+      - name: Lint tenant middleware and integration tests
+        run: |
+          php -l app/Http/Middleware/ResolveErpTenant.php
+          php -l tests/Feature/ERP/TenantHttpIsolationTest.php
+          php -l tests/Feature/ERP/TenantMysqlConnectionTest.php
       - name: Run tenant HTTP isolation test
         run: php artisan test --filter TenantHttpIsolationTest --stop-on-failure
       - name: Run database permission boundary test
