@@ -75,6 +75,33 @@ jobs:
             $pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=erp_test_a", "erp_test_a_user", "ci-tenant-a-test-only");
             echo "Disposable tenant A connection established\n";
           '
+      - name: Prepare disposable Laravel authentication fixtures
+        run: |
+          docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
+            CREATE TABLE erp_test_central.erp_tenants (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              business_name VARCHAR(255) NOT NULL, slug VARCHAR(255) NOT NULL,
+              domain VARCHAR(255) NOT NULL, database_name VARCHAR(255) NOT NULL,
+              database_username VARCHAR(255) NOT NULL, database_password TEXT NOT NULL,
+              status VARCHAR(20) NOT NULL, suspended_at TIMESTAMP NULL,
+              trial_ends_at TIMESTAMP NULL, created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
+            );
+            CREATE TABLE erp_test_a.users (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255),
+              email VARCHAR(255), password VARCHAR(255), active BOOLEAN,
+              locale VARCHAR(5), remember_token VARCHAR(100) NULL,
+              created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
+            );
+            CREATE TABLE erp_test_b.users LIKE erp_test_a.users;
+            CREATE TABLE erp_test_a.customers (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              code VARCHAR(255), name VARCHAR(255),
+              created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
+            );
+            CREATE TABLE erp_test_b.customers LIKE erp_test_a.customers;
+          "
+      - name: Run tenant HTTP isolation test
+        run: php artisan test --filter TenantHttpIsolationTest --stop-on-failure
       - name: Run database permission boundary test
         run: php artisan test --filter TenantMysqlConnectionTest --stop-on-failure
       - name: Integration test readiness
