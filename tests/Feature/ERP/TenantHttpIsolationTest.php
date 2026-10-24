@@ -66,7 +66,7 @@ final class TenantHttpIsolationTest extends TestCase
             // Prove the tenant connection selects only its own customer records.
             // These assertions deliberately bypass HTTP authorization; they check
             // physical database separation independently of user permissions.
-            $connector = app(\\App\\Services\\ERP\\TenantConnector::class);
+            $connector = app(\App\Services\ERP\TenantConnector::class);
             foreach (['A', 'B'] as $index => $suffix) {
                 $connector->connect($tenants[$index]);
                 try {
