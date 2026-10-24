@@ -1,0 +1,69 @@
+name: FidaERP Disposable MySQL Integration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tenant-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-disposable-root-only
+          MYSQL_DATABASE: erp_test_central
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-disposable-root-only"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      APP_KEY: 'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      ERP_RUN_ISOLATION_TESTS: '1'
+      ERP_TEST_DB_HOST: 127.0.0.1
+      ERP_TEST_DB_PORT: '3306'
+      ERP_TEST_CENTRAL_DATABASE: erp_test_central
+      ERP_TEST_TENANT_A_DATABASE: erp_test_a
+      ERP_TEST_TENANT_B_DATABASE: erp_test_b
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql, pdo_sqlite, intl, gd, bcmath
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Provision disposable databases and isolated users
+        run: |
+          docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
+            CREATE DATABASE erp_test_a;
+            CREATE DATABASE erp_test_b;
+            CREATE USER 'erp_test_central_user'@'%' IDENTIFIED BY 'ci-central-test-only';
+            CREATE USER 'erp_test_a_user'@'%' IDENTIFIED BY 'ci-tenant-a-test-only';
+            CREATE USER 'erp_test_b_user'@'%' IDENTIFIED BY 'ci-tenant-b-test-only';
+            GRANT ALL PRIVILEGES ON erp_test_central.* TO 'erp_test_central_user'@'%';
+            GRANT ALL PRIVILEGES ON erp_test_a.* TO 'erp_test_a_user'@'%';
+            GRANT ALL PRIVILEGES ON erp_test_b.* TO 'erp_test_b_user'@'%';
+            FLUSH PRIVILEGES;"
+      - name: Confirm isolated MySQL connection
+        run: |
+          php -r '
+            $pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=erp_test_a", "erp_test_a_user", "ci-tenant-a-test-only");
+            echo "Disposable tenant A connection established\n";
+          '
+      - name: Integration test readiness
+        run: |
+          echo "The Laravel two-tenant suite is intentionally incomplete."
+          echo "Do not treat this workflow as proof of tenant data isolation."
