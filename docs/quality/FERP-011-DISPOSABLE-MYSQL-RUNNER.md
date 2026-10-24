@@ -1,32 +1,29 @@
-# FERP-011 — Disposable MySQL Integration Runner Contract
+# FERP-011 — Disposable MySQL Integration Runner
 
-## Status
-The prior database integration test was replaced with an explicit **incomplete** test because its open-transaction fixture conflicted with the tenant connector's purge/reconnect lifecycle. No database integration tests have passed.
+## Status and evidence
+The GitHub Actions disposable MySQL integration workflow passed for commit `9bc54e89131d3b4973557a07feb42e370f6f53db`:
+https://github.com/fidatech/fida-erp/actions/runs/40141271095
 
-## Execution design
-1. Run inside a disposable isolated CI service with MySQL 8.
-2. Create three new databases named `erp_test_central`, `erp_test_a`, `erp_test_b` using a CI-only administrator; do not give those credentials to the Laravel test process.
-3. Create one least-privilege database user per database. The tenant users must not have access to the central database or the other tenant's database.
-4. Run central and tenant migrations through dedicated CI bootstrap commands, not web requests.
-5. Seed two tenants and their users in the disposable environment.
-6. Run tenant A/B login, host switching, session separation, suspended tenant, cross-tenant customer access, and context cleanup tests.
-7. Destroy the entire disposable MySQL service on job completion, including failures.
+The legacy `TenantIsolationIntegrationTest` remains explicitly incomplete and is not part of the passing workflow. The executed tests are `TenantHttpIsolationTest` and `TenantMysqlConnectionTest`.
 
-## Mandatory preflight
-- Reject missing `APP_ENV=testing`.
-- Reject any database name not beginning `erp_test_`.
-- Reject reused database names or matching database users.
-- Require an explicit CI-generated sentinel in each database.
-- Reject production or staging hosts and non-loopback database hosts unless an explicitly reviewed CI service alias is used.
-- Never call `migrate:fresh`, `db:wipe`, or `DROP DATABASE` against externally managed infrastructure.
+## Current runner design
+1. Start a disposable MySQL 8 service on a GitHub-hosted runner.
+2. Provision central, tenant A, and tenant B databases with the `erp_test_*` prefix.
+3. Grant distinct CI-only users access only to their corresponding databases.
+4. Provision minimal central tenant and tenant user/customer/role/permission tables.
+5. Execute PHP lint, tenant host login, authorized customer API isolation, session replay in both directions, unknown/suspended tenant handling, context cleanup, and MySQL permission-boundary assertions.
+6. Destroy the runner and MySQL service after the workflow.
 
-## Acceptance gates
-- Syntax checks pass.
-- All integration tests actually execute (no skip/incomplete).
-- A cannot read B's customers, users, or session.
-- A tenant session cannot authenticate a request to the platform.
-- Suspended/unknown hosts reject requests.
-- No tenant context survives request completion.
-- The CI environment is destroyed after each run.
+## Safety requirements
+- Run only with `APP_ENV=testing` and `ERP_RUN_ISOLATION_TESTS=1`.
+- Use test-only hosts, credentials, encryption keys, and data.
+- Never run this suite against production or staging databases.
+- Never run destructive database commands against externally managed infrastructure.
+- Require distinct database names and users, and least-privilege grants.
 
-This document is a runner contract, not evidence that the environment or tests are implemented.
+## Verified versus outstanding
+**Verified in CI:** the current HTTP fixture and physical MySQL permission-boundary tests pass.
+
+**Not yet verified:** full tenant migrations, production session drivers and cookies, platform-admin versus tenant session separation, suspended tenant users, queue-worker reuse, and exceptional-path cleanup. The minimal CI schema is not a substitute for full application migration testing.
+
+The workflow is a reproducible regression harness, not production certification. Re-run it after any security-relevant change and require passing results on the final reviewed commit.
