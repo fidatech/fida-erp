@@ -99,6 +99,18 @@ final class TenantHttpIsolationTest extends TestCase
                 ->assertUnauthorized();
             $this->assertFalse(app()->bound('erp.current_tenant'));
 
+            // Exercise the reverse direction with a fresh tenant A login:
+            // a tenant A session must also be rejected on tenant B's host.
+            $this->flushSession();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->post('http://tenant-a.erp.test/erp/login', [
+                    'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                ])->assertRedirect();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->getJson('http://tenant-b.erp.test/erp/customers/data')
+                ->assertUnauthorized();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+
             $this->withServerVariables(['HTTP_HOST' => 'unknown.erp.test'])
                 ->get('http://unknown.erp.test/erp/login')->assertNotFound();
 
