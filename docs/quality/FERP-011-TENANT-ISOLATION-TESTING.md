@@ -1,30 +1,36 @@
-# FERP-011: Tenant Isolation Test Execution Guide
+# FERP-011: Tenant Isolation — Verified CI Scope
 
-Status: **Draft — do not execute the database integration suite yet.**
+Status: **Disposable MySQL and security baseline CI passed on commit `9bc54e8`; final merge review remains open.**
 
-## Scope
-The current tests provide preliminary checks of tenant guard registration, tenant connection input validation, middleware presence, and opt-in MySQL integration scenarios. They do **not** prove cross-tenant data isolation.
+## Evidence
+- Tenant security baseline: https://github.com/fidatech/fida-erp/actions/runs/40141271058
+- Disposable MySQL integration: https://github.com/fidatech/fida-erp/actions/runs/40141271095
+- Both workflows completed successfully for commit `9bc54e89131d3b4973557a07feb42e370f6f53db`.
 
-## Safe test environment prerequisites
-- Dedicated disposable MySQL instance with three separate **empty** databases, each named `erp_test_*`.
-- Distinct database users with privileges restricted to their corresponding test databases. The central test connection must not have access to live SaaS data.
-- `APP_ENV=testing` and `ERP_RUN_ISOLATION_TESTS=1` set explicitly in the test process, not in production `.env`.
-- Never run this suite against production or staging tenant databases.
-- Use a nonproduction app key and test-only email addresses.
-- Snapshot or recreate disposable test databases out of band before each run.
+## Verified by automated tests
+- Two tenant hostnames authenticate users against distinct disposable MySQL databases.
+- Authorized customer API requests return the current tenant's customer and exclude the other tenant's customer.
+- Tenant A-to-B and B-to-A authenticated session replay requests are rejected.
+- Unknown and suspended tenant hosts return 404.
+- Unauthenticated protected customer endpoints return 401.
+- The tenant context is unbound after tested HTTP requests.
+- Tenant database credentials cannot access the other tenant's database, as tested in the MySQL boundary suite.
+- PHP syntax linting runs before the integration tests.
 
-## Current blockers
-1. The integration test creates persistent tables and has no tearDown cleanup. A repeat run will not be reliable.
-2. The central test model depends on the application's actual central connection and encryption key. Verify the connection before enabling the suite.
-3. Tenant database users must be constrained to their respective databases; the current harness does not independently prove those grants.
-4. Cross-host session reuse, protected resource access, suspended-user behavior, and post-request context leakage need additional assertions.
-5. PHP/MySQL integration tests have **not** been executed. Do not merge on the strength of source review alone.
+## Test environment
+The GitHub Actions workflow provisions MySQL 8 on a disposable runner with central and tenant databases named `erp_test_central`, `erp_test_a`, and `erp_test_b`. Separate CI-only users are granted per-database privileges. The Laravel tests require `APP_ENV=testing` and `ERP_RUN_ISOLATION_TESTS=1`. Never point these tests at staging or production databases.
 
-## Safe sequence
-1. Review this test harness and complete cleanup/preflight isolation.
-2. Confirm all three database names, host and grants in a disposable MySQL instance.
-3. Run PHP syntax checks and the non-database test subset.
-4. Run the database suite in a disposable CI environment.
-5. Review failures, fix root causes, rerun, and only then request merge review.
+## Limitations and open review gates
+- The CI fixture uses a minimal hand-built schema rather than full tenant migrations; this is **not** end-to-end deployment verification.
+- The test session driver is `array`, not a real browser with production cookie and session-store configuration.
+- Platform-admin session isolation, tenant user suspension, concurrent requests, queue workers, and tenant context cleanup after exceptional paths need dedicated coverage.
+- The legacy `TenantIsolationIntegrationTest` remains explicitly incomplete; the passing CI workflows run the newer HTTP and MySQL boundary suites.
+- Review deployment configuration, session cookie domain, HTTPS, and proxy host validation before production.
+- No merge or production rollout is implied by these passing tests.
 
-No live credentials should be committed to the repository.
+## Safe review sequence
+1. Review the tenant resolver, guard lifecycle, and CI workflow changes.
+2. Add missing platform/admin and production-like session regression tests.
+3. Confirm the full migration schema and database grants in a disposable environment.
+4. Require green CI on the final reviewed commit.
+5. Request explicit merge/deployment approval.
