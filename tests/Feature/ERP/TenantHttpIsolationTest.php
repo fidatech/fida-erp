@@ -115,6 +115,32 @@ final class TenantHttpIsolationTest extends TestCase
                 $this->assertFalse(app()->bound('erp.current_tenant'));
             }
 
+            // Scheduled jobs must reload the central tenant record and
+            // reject suspension even if a job was queued while active.
+            $activeCodes = $connector->withinActiveTenant((int) $tenants[0]->getKey(), function (): array {
+                return DB::connection('erp_tenant')->table('customers')->pluck('code')->all();
+            });
+            $this->assertContains('ONLY_A', $activeCodes);
+            $this->assertNull(config('database.connections.erp_tenant'));
+
+            $tenants[0]->update(['suspended_at' => now()]);
+            try {
+                $executed = false;
+                try {
+                    $connector->withinActiveTenant((int) $tenants[0]->getKey(), function () use (&$executed): void {
+                        $executed = true;
+                    });
+                    $this->fail('Suspended tenant was allowed to execute scheduled work.');
+                } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                    $this->assertSame('Tenant is inactive or suspended.', $e->getMessage());
+                }
+                $this->assertFalse($executed);
+                $this->assertNull(config('database.connections.erp_tenant'));
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            } finally {
+                $tenants[0]->update(['suspended_at' => null]);
+            }
+
             // Scheduled/background scopes must execute real SQL against
             // only their selected tenant and release credentials afterward.
             foreach (['A', 'B', 'A'] as $suffix) {
