@@ -302,6 +302,11 @@ final class TenantHttpIsolationTest extends TestCase
                 $this->assertFalse(app()->bound('erp.current_tenant'));
             }
 
+            // Ensure no prior tenant session can affect the suspension
+            // response assertion through the session-binding middleware.
+            $this->flushSession();
+            auth()->forgetGuards();
+
             // Suspending a tenant must deny both public login and protected
             // APIs, even if its database still contains active users.
             $tenants[1]->update(['suspended_at' => now()]);
