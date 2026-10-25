@@ -89,6 +89,26 @@ final class TenantHttpIsolationTest extends TestCase
                 DB::connection($connection)->table('permission_role')->insert([
                     'role_id' => $roleId, 'permission_id' => $permissionId,
                 ]);
+                $branchId = DB::connection($connection)->table('branches')->insertGetId([
+                    'code' => 'MAIN', 'name' => 'Main branch', 'active' => 1,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                $otherBranchId = DB::connection($connection)->table('branches')->insertGetId([
+                    'code' => 'OTHER', 'name' => 'Restricted branch', 'active' => 1,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                DB::connection($connection)->table('branch_user')->insert([
+                    'user_id' => $userId, 'branch_id' => $branchId,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                $this->assertTrue(DB::connection($connection)->table('branch_user')
+                    ->where('user_id', $userId)->where('branch_id', $branchId)->exists());
+                DB::connection($connection)->table('warehouses')->insert([
+                    ['branch_id' => $branchId, 'code' => 'ALLOWED', 'name' => 'Allowed warehouse'],
+                    ['branch_id' => $otherBranchId, 'code' => 'RESTRICTED', 'name' => 'Restricted warehouse'],
+                ]);
+                $connectorForBranches = app(\App\Services\ERP\TenantConnector::class);
+                // The relationship is exercised after central tenant creation below.
                 $tenants[] = Tenant::create([
                     'business_name' => 'Test '.$suffix, 'slug' => 'ci-'.strtolower($suffix),
                     'domain' => 'tenant-'.strtolower($suffix).'.erp.test',
