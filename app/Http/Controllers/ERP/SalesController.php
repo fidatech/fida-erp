@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\ERP;
 use App\Http\Controllers\Controller;
+use App\Services\ERP\BranchWarehouseAccess;
 use App\Services\ERP\SaleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,14 +17,10 @@ final class SalesController extends Controller
 
     private function allowedWarehouseIds(): array
     {
-        return DB::connection('erp_tenant')->table('warehouses as w')
-            ->join('branch_user as bu', 'bu.branch_id', '=', 'w.branch_id')
-            ->join('branches as b', 'b.id', '=', 'w.branch_id')
-            ->where('bu.user_id', auth('erp_tenant')->id())->where('b.active', true)
-            ->pluck('w.id')->map(fn ($id) => (int) $id)->all();
+        return app(BranchWarehouseAccess::class)->allowedWarehouseIds();
     }
 
-    public function index(){
+ public function index(){
         $rows=DB::connection('erp_tenant')->table('sales_invoices as s')->join('customers as c','c.id','=','s.customer_id')
             ->whereIn('s.warehouse_id', $this->allowedWarehouseIds())
             ->select('s.id','s.number','s.total','s.currency_code','s.status','s.created_at','c.name as customer')
