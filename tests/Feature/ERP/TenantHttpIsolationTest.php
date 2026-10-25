@@ -216,6 +216,10 @@ final class TenantHttpIsolationTest extends TestCase
             // A real HTTPS request must receive a Secure session cookie.
             config(['session.secure' => true]);
             $this->flushSession();
+            // Earlier login scenarios have exhausted the 6/minute test
+            // throttle. Disable only throttle middleware for the remaining
+            // HTTPS cookie assertion; authentication remains enabled.
+            $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
             $httpsHost = 'tenant-a.erp.test';
             $secureLogin = $this->withServerVariables([
                 'HTTP_HOST' => $httpsHost,
