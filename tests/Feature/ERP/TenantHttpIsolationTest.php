@@ -128,6 +128,15 @@ final class TenantHttpIsolationTest extends TestCase
                     $restricted = DB::connection('erp_tenant')->table('branches')->where('code', 'OTHER')->value('id');
                     $this->assertTrue($user->canAccessBranch((int) $allowed));
                     $this->assertFalse($user->canAccessBranch((int) $restricted));
+                    // Model-level authorization must fail closed even if an
+                    // inactive user instance is still held by a worker.
+                    $this->assertTrue($user->allowed('customers.manage'));
+                    $user->active = false;
+                    $this->assertFalse($user->allowed('customers.manage'));
+                    $this->assertFalse($user->canAccessBranch((int) $allowed));
+                    $user->active = true;
+                    $this->assertTrue($user->allowed('customers.manage'));
+                    $this->assertTrue($user->canAccessBranch((int) $allowed));
                     DB::connection('erp_tenant')->table('branches')->where('id', $allowed)->update(['active' => 0]);
                     $this->assertFalse($user->canAccessBranch((int) $allowed));
                     DB::connection('erp_tenant')->table('branches')->where('id', $allowed)->update(['active' => 1]);
