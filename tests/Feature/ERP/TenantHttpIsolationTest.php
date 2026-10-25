@@ -139,6 +139,22 @@ final class TenantHttpIsolationTest extends TestCase
                 $this->assertContains('ONLY_'.$suffix, $codes);
                 $this->assertNotContains('ONLY_'.($suffix === 'A' ? 'B' : 'A'), $codes);
                 $this->assertFalse(app()->bound('erp.current_tenant'));
+
+                // The same authenticated session must remain usable for
+                // multiple requests on its own host, without reconnect leaks.
+                $second = $this->withServerVariables(['HTTP_HOST' => $host])
+                    ->getJson('http://'.$host.'/erp/customers/data');
+                $second->assertOk();
+                $this->assertContains('ONLY_'.$suffix, array_column($second->json('data'), 'code'));
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+
+                // Logout invalidates the tenant session; a subsequent
+                // protected request must be rejected.
+                $this->withServerVariables(['HTTP_HOST' => $host])
+                    ->post('http://'.$host.'/erp/logout')->assertRedirect();
+                $this->withServerVariables(['HTTP_HOST' => $host])
+                    ->getJson('http://'.$host.'/erp/customers/data')->assertUnauthorized();
+                $this->assertFalse(app()->bound('erp.current_tenant'));
             }
             $this->flushSession();
 
