@@ -1,6 +1,6 @@
 <x-admin.layout :title="$title ?? 'Fida ERP'">
 <link rel="stylesheet" href="{{ asset('fida-erp/erp.css') }}">
-<div class="erp-between" style="margin-bottom:20px"><nav class="erp-flex">
+<div class="erp-between erp-admin-toolbar" style="margin-bottom:20px"><nav class="erp-flex erp-admin-nav" aria-label="ERP sections">
 <a href="{{ route('erp.dashboard') }}" class="erp-btn secondary">{{ __('erp::ui.dashboard') }}</a>
 <a href="{{ route('erp.customers.index') }}" class="erp-btn secondary">{{ __('erp::ui.customers') }}</a>
 <a href="{{ route('erp.products.index') }}" class="erp-btn secondary">{{ __('erp::ui.products') }}</a>
