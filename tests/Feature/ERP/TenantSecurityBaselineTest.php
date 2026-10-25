@@ -131,6 +131,29 @@ final class TenantSecurityBaselineTest extends TestCase
         $this->assertSame('lax', strtolower((string) config('session.same_site')));
     }
 
+    public function test_platform_admin_gate_rejects_wrong_host_before_authorization(): void
+    {
+        config(['erp.platform_host' => 'platform.erp.test']);
+        $request = \Illuminate\Http\Request::create('http://tenant-a.erp.test/platform/erp', 'GET');
+        $middleware = app(\App\Http\Middleware\ErpPlatformAdmin::class);
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class);
+        $middleware->handle($request, fn () => response('unexpected'));
+    }
+
+    public function test_platform_admin_gate_rejects_non_admin_on_platform_host(): void
+    {
+        config(['erp.platform_host' => 'platform.erp.test']);
+        $request = \Illuminate\Http\Request::create('http://platform.erp.test/platform/erp', 'GET');
+        $request->setUserResolver(fn () => new \Illuminate\Foundation\Auth\User([
+            'name' => 'Not an administrator',
+        ]));
+        $middleware = app(\App\Http\Middleware\ErpPlatformAdmin::class);
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $middleware->handle($request, fn () => response('unexpected'));
+    }
+
     public function test_tenant_routes_require_tenant_resolution_middleware(): void
     {
         $routes = app('router')->getRoutes();
