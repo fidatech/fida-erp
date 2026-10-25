@@ -265,6 +265,15 @@ final class TenantHttpIsolationTest extends TestCase
             $this->assertNull($secureCookies[0]->getDomain());
             $this->flushSession();
 
+            // Untrusted forwarded host headers cannot select another tenant.
+            // The HTTP Host remains authoritative without a trusted proxy.
+            $this->withServerVariables([
+                'HTTP_HOST' => 'unknown.erp.test',
+                'HTTP_X_FORWARDED_HOST' => 'tenant-a.erp.test',
+                'HTTP_X_FORWARDED_PROTO' => 'https',
+            ])->get('http://unknown.erp.test/erp/login')->assertNotFound();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+
             $this->withServerVariables(['HTTP_HOST' => 'unknown.erp.test'])
                 ->get('http://unknown.erp.test/erp/login')->assertNotFound();
 
