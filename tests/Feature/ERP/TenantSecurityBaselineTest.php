@@ -8,6 +8,21 @@ use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
 {
+    public function test_queue_after_event_invokes_registered_tenant_cleanup(): void
+    {
+        app()->instance('erp.current_tenant', new \stdClass());
+
+        $event = new \Illuminate\Queue\Events\JobProcessed(
+            'sync',
+            new \Illuminate\Queue\Jobs\SyncJob(
+                app(), '{"uuid":"test","displayName":"cleanup-test","job":"cleanup-test","data":{}}', 'sync', 'default'
+            )
+        );
+        app('events')->dispatch($event);
+
+        $this->assertFalse(app()->bound('erp.current_tenant'));
+    }
+
     public function test_tenant_disconnect_is_idempotent_across_worker_job_boundaries(): void
     {
         $connector = app(TenantConnector::class);
