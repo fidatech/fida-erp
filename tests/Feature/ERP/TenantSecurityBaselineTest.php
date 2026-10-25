@@ -155,6 +155,20 @@ final class TenantSecurityBaselineTest extends TestCase
         $middleware->handle($request, fn () => response('unexpected'));
     }
 
+    public function test_platform_admin_gate_allows_admin_on_correct_host(): void
+    {
+        config(['erp.platform_host' => 'platform.erp.test']);
+        $request = \Illuminate\Http\Request::create('http://platform.erp.test/platform/erp', 'GET');
+        $admin = new \Illuminate\Foundation\Auth\User();
+        $admin->setAttribute('erp_platform_admin', true);
+        $request->setUserResolver(fn () => $admin);
+        $response = app(\App\Http\Middleware\ErpPlatformAdmin::class)
+            ->handle($request, fn () => response('allowed', 200));
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('allowed', $response->getContent());
+    }
+
     public function test_tenant_routes_require_tenant_resolution_middleware(): void
     {
         $routes = app('router')->getRoutes();
