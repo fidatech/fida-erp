@@ -117,6 +117,41 @@ final class TenantHttpIsolationTest extends TestCase
                 ]);
             }
 
+            // The operator-facing audit must count real MySQL memberships
+            // without changing them or leaking tenant context between runs.
+            foreach ($tenants as $tenant) {
+                $tenantId = (int) $tenant->getKey();
+                $audit = \Illuminate\Support\Facades\Artisan::call(
+                    'erp:audit-branch-memberships', ['tenant-id' => $tenantId]
+                );
+                $this->assertSame(0, $audit);
+                $this->assertStringContainsString(
+                    'Without active branch membership',
+                    \Illuminate\Support\Facades\Artisan::output()
+                );
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            }
+            $auditDb = DB::connection('fixture_A');
+            $auditUserId = $auditDb->table('users')->where('email', 'owner@example.test')->value('id');
+            $auditBranchId = $auditDb->table('branches')->where('code', 'MAIN')->value('id');
+            $auditDb->table('branch_user')->where('user_id', $auditUserId)
+                ->where('branch_id', $auditBranchId)->delete();
+            try {
+                $this->assertSame(0, \Illuminate\Support\Facades\Artisan::call(
+                    'erp:audit-branch-memberships', ['tenant-id' => (int) $tenants[0]->getKey()]
+                ));
+                $this->assertStringContainsString(
+                    'Manual authorized branch assignments are required',
+                    \Illuminate\Support\Facades\Artisan::output()
+                );
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            } finally {
+                $auditDb->table('branch_user')->insert([
+                    'user_id' => $auditUserId, 'branch_id' => $auditBranchId,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+
             // Branch membership must allow assigned active branches only.
             $branchConnector = app(\App\Services\ERP\TenantConnector::class);
             foreach ($tenants as $tenant) {
