@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ERP\Central\Tenant;
 use App\Services\ERP\TenantConnector;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
