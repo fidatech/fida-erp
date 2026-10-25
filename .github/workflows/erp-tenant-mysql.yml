@@ -26,6 +26,7 @@ on:
       - 'app/Http/Controllers/ERP/PlatformController.php'
       - 'app/Providers/AppServiceProvider.php'
       - 'app/Console/Commands/ProvisionErpTenant.php'
+      - 'app/Console/Commands/AuditErpBranchMemberships.php'
       - '.env.example'
 
 permissions:
@@ -246,6 +247,9 @@ jobs:
           echo "Fresh MySQL schemas have required tables, isolated ownership and branch membership foreign keys."
       - name: Lint tenant middleware and integration tests
         run: |
+          php -l app/Console/Commands/ProvisionErpTenant.php
+          php -l app/Console/Commands/AuditErpBranchMemberships.php
+          php artisan list --raw | grep -q 'erp:audit-branch-memberships'
           php -l app/Http/Middleware/ResolveErpTenant.php
           php -l tests/Feature/ERP/TenantHttpIsolationTest.php
           php -l tests/Feature/ERP/TenantMysqlConnectionTest.php
