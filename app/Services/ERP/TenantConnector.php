@@ -19,6 +19,10 @@ final class TenantConnector
         if (!is_array($source) || ($source['driver'] ?? '') !== 'mysql') {
             throw new InvalidArgumentException('MySQL central connection required');
         }
+        // A central DATABASE_URL/DB_URL can override explicit database and
+        // credentials in Laravel's MySQL connector. Never inherit that DSN
+        // when constructing an isolated tenant connection.
+        unset($source['url']);
         config(['database.connections.erp_tenant' => array_replace($source,['database'=>$tenant->database_name,'username'=>$tenant->database_username,'password'=>$tenant->database_password])]);
         try {
             DB::purge('erp_tenant');
