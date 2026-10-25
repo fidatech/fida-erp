@@ -199,6 +199,25 @@ final class TenantSecurityBaselineTest extends TestCase
         }
     }
 
+    public function test_tenant_connection_rejects_missing_mysql_connection_without_binding_context(): void
+    {
+        $original = config('database.connections.mysql');
+        $tenant = new Tenant();
+        $tenant->database_name = 'valid_database';
+        $tenant->database_username = 'valid_user';
+        $tenant->database_password = 'placeholder';
+
+        config()->offsetUnset('database.connections.mysql');
+        try {
+            $this->expectException(\InvalidArgumentException::class);
+            $this->expectExceptionMessage('MySQL central connection required');
+            app(TenantConnector::class)->connect($tenant);
+        } finally {
+            config(['database.connections.mysql' => $original]);
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+        }
+    }
+
     public function test_tenant_routes_require_tenant_resolution_middleware(): void
     {
         $routes = app('router')->getRoutes();
