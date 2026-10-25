@@ -7,6 +7,13 @@ use Illuminate\Support\Facades\DB;
 use DomainException;
 final class SalesController extends Controller
 {
+    private function authorizeRequestedWarehouse(Request $request): void
+    {
+        $id = $request->input('warehouse_id');
+        abort_unless(is_scalar($id) && ctype_digit((string) $id)
+            && in_array((int) $id, $this->allowedWarehouseIds(), true), 403);
+    }
+
     private function allowedWarehouseIds(): array
     {
         return DB::connection('erp_tenant')->table('warehouses as w')
@@ -27,13 +34,13 @@ final class SalesController extends Controller
         'currencies'=>DB::connection('erp_tenant')->table('currencies')->where('active',1)->get(),
         'base'=>DB::connection('erp_tenant')->table('company_settings')->value('base_currency')]);}
     public function store(Request $request,SaleService $service){
+        $this->authorizeRequestedWarehouse($request);
         $input=$request->validate(['request_key'=>'required|uuid', 'customer_id'=>'required|integer|exists:erp_tenant.customers,id',
             'warehouse_id'=>'required|integer|exists:erp_tenant.warehouses,id', 'currency_code'=>'required|string|size:3',
             'fx_rate'=>'required|numeric|gt:0','discount'=>'nullable|numeric|min:0',
             'lines'=>'required|array|min:1|max:100', 'lines.*.product_variant_id'=>'required|integer|exists:erp_tenant.product_variants,id',
             'lines.*.quantity'=>'required|numeric|gt:0','lines.*.unit_price'=>'required|numeric|min:0',
             'lines.*.discount'=>'nullable|numeric|min:0','lines.*.tax'=>'nullable|numeric|min:0']);
-        abort_unless(in_array((int) $input['warehouse_id'], $this->allowedWarehouseIds(), true), 403);
         try{$id=$service->draft($input);}catch(DomainException|\InvalidArgumentException $e){return back()->withErrors(['sale'=>$e->getMessage()])->withInput();}
         return redirect()->route('erp.sales.index')->with('success',__('erp::ui.invoice_drafted').' #'.$id);
     }
