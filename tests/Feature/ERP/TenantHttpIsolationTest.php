@@ -186,6 +186,12 @@ final class TenantHttpIsolationTest extends TestCase
             $this->assertFalse(app()->bound('erp.current_tenant'));
             $this->assertSame($restrictedWarehouse, (int) $branchDb->table('sales_invoices')
                 ->where('id', $restrictedInvoiceId)->value('warehouse_id'));
+            // PDF access must be denied before rendering any invoice details.
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->get('http://tenant-a.erp.test/erp/sales/'.$restrictedInvoiceId.'/pdf')
+                ->assertNotFound();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+
             // Sales listing must not reveal invoices from another branch.
             $allowedInvoiceId = $branchDb->table('sales_invoices')->insertGetId([
                 'warehouse_id' => $allowedWarehouse,
