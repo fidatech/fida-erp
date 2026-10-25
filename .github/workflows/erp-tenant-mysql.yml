@@ -205,15 +205,15 @@ jobs:
           php -r '
             require "vendor/autoload.php";
             $app = require "bootstrap/app.php";
-            $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+            $app->make(\Illuminate\Contracts\Console\\Kernel::class)->bootstrap();
             config(["database.connections.erp_tenant" => config("database.connections.mysql")]);
-            $status = \\Illuminate\\Support\\Facades\\Artisan::call("migrate", [
+            $status = \Illuminate\Support\Facades\\Artisan::call("migrate", [
               "--database" => "erp_tenant",
               "--path" => "database/migrations/erp_tenant",
               "--force" => true,
               "--no-interaction" => true,
             ]);
-            echo \\Illuminate\\Support\\Facades\\Artisan::output();
+            echo \Illuminate\Support\Facades\\Artisan::output();
             exit($status);
           '
           docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
