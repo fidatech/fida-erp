@@ -9,6 +9,8 @@ use App\Models\ERP\Tenant\TenantUser;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Queue\Events\JobExceptionOccurred;
 use App\Services\ERP\TenantConnector;
 
 final class ErpServiceProvider extends ServiceProvider
@@ -38,6 +40,12 @@ final class ErpServiceProvider extends ServiceProvider
             app('auth')->forgetGuards();
         });
         Queue::failing(function (): void {
+            app(TenantConnector::class)->resetWorkerContext();
+            app('auth')->forgetGuards();
+        });
+        // Retryable exceptions are not necessarily permanently failed jobs.
+        // Clean up immediately on every thrown job exception, before retry.
+        Event::listen(JobExceptionOccurred::class, function (): void {
             app(TenantConnector::class)->resetWorkerContext();
             app('auth')->forgetGuards();
         });
