@@ -9,8 +9,8 @@
 <div><label class="erp-label">{{ __('erp::ui.base_rate') }} ({{ $base }})</label><input class="erp-field" name="fx_rate" value="1" type="number" step="any" min="0.000000000001" required></div></div>
 <div class="erp-table-scroll" style="margin-top:20px"><table class="erp-table"><thead><tr><th>{{ __('erp::ui.products') }}</th><th>{{ __('erp::ui.quantity') }}</th><th>{{ __('erp::ui.unit_cost') }}</th><th></th></tr></thead><tbody id="receipt-lines"></tbody></table></div>
 <p><button class="erp-btn secondary" type="button" id="add-receipt-line">+ {{ __('erp::ui.add_line') }}</button></p><button class="erp-btn">{{ __('erp::ui.receive_goods') }}</button></form></div>
-<div class="erp-card"><h3>{{ __('erp::ui.stock') }}</h3><div class="erp-table-scroll"><table class="erp-table"><thead><tr><th>{{ __('erp::ui.products') }}</th><th>{{ __('erp::ui.sku') }}</th><th>{{ __('erp::ui.warehouse') }}</th><th>{{ __('erp::ui.quantity') }}</th><th>{{ __('erp::ui.unit_cost') }}</th></tr></thead><tbody>
-@foreach($rows as $s)<tr><td>{{ $s->name }}</td><td>{{ $s->sku }}</td><td>{{ $s->warehouse }}</td><td>{{ $s->quantity }}</td><td>{{ $s->average_cost }}</td></tr>@endforeach
+<div class="erp-card"><h3>{{ __('erp::ui.stock') }}</h3><div class="erp-table-scroll"><table class="erp-table erp-responsive-list"><thead><tr><th>{{ __('erp::ui.products') }}</th><th>{{ __('erp::ui.sku') }}</th><th>{{ __('erp::ui.warehouse') }}</th><th>{{ __('erp::ui.quantity') }}</th><th>{{ __('erp::ui.unit_cost') }}</th></tr></thead><tbody>
+@forelse($rows as $s)<tr><td data-label="{{ __('erp::ui.products') }}">{{ $s->name }}</td><td data-label="{{ __('erp::ui.sku') }}">{{ $s->sku }}</td><td data-label="{{ __('erp::ui.warehouse') }}">{{ $s->warehouse }}</td><td data-label="{{ __('erp::ui.quantity') }}">{{ $s->quantity }}</td><td data-label="{{ __('erp::ui.unit_cost') }}">{{ $s->average_cost }}</td></tr>@empty<tr><td colspan="5" class="erp-empty-state">{{ __('erp::ui.stock') }}: 0</td></tr>@endforelse
 </tbody></table></div><div class="erp-pagination">{{ $rows->links() }}</div></div>
 @endsection
 @section('scripts')<script>
