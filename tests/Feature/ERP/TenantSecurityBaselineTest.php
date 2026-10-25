@@ -8,6 +8,25 @@ use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
 {
+    public function test_retryable_job_exception_scrubs_tenant_credentials_before_retry(): void
+    {
+        config(['database.connections.erp_tenant' => [
+            'driver' => 'mysql', 'database' => 'previous_tenant',
+            'username' => 'previous_user', 'password' => 'previous_secret',
+        ]]);
+        app()->instance('erp.current_tenant', new \stdClass());
+
+        $job = new \Illuminate\Queue\Jobs\SyncJob(
+            app(), '{"uuid":"retry-exception","displayName":"retry-exception","job":"retry-exception","data":{}}', 'sync', 'default'
+        );
+        app('events')->dispatch(new \Illuminate\Queue\Events\JobExceptionOccurred(
+            'sync', $job, new \RuntimeException('Retryable job error')
+        ));
+
+        $this->assertNull(config('database.connections.erp_tenant'));
+        $this->assertFalse(app()->bound('erp.current_tenant'));
+    }
+
     public function test_queue_completion_and_failure_both_scrub_tenant_credentials(): void
     {
         $job = new \Illuminate\Queue\Jobs\SyncJob(
