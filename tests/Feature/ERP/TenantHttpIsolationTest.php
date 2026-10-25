@@ -302,7 +302,13 @@ final class TenantHttpIsolationTest extends TestCase
                 $this->assertFalse(app()->bound('erp.current_tenant'));
             }
 
+            // Suspending a tenant must deny both public login and protected
+            // APIs, even if its database still contains active users.
             $tenants[1]->update(['suspended_at' => now()]);
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->getJson('http://tenant-b.erp.test/erp/customers/data')
+                ->assertNotFound();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
             $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
                 ->get('http://tenant-b.erp.test/erp/login')->assertNotFound();
         } finally {
