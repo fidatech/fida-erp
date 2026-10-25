@@ -12,6 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Resolve tenant and bind its database before the auth middleware
+        // attempts to read a tenant user. Keep session initialization first.
+        $middleware->prependToPriorityList(
+            \Illuminate\Auth\Middleware\Authenticate::class,
+            \App\Http\Middleware\ResolveErpTenant::class
+        );
         // Trust forwarded scheme/host only from explicitly configured proxies.
         // Never default to '*': clients could spoof X-Forwarded-Host/Proto.
         $proxies = array_values(array_filter(array_map(
