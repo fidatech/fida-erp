@@ -20,7 +20,7 @@ final class TenantUser extends Authenticatable
 
     public function canAccessBranch(int $branchId): bool
     {
-        return $branchId > 0 && $this->branches()
+        return (bool) $this->active && $branchId > 0 && $this->branches()
             ->where('branches.id', $branchId)
             ->where('branches.active', true)
             ->exists();
@@ -28,6 +28,6 @@ final class TenantUser extends Authenticatable
 
     public function allowed(string $permission): bool
     {
-        return $this->roles()->whereHas('permissions', fn($q)=>$q->where('name',$permission))->exists();
+        return (bool) $this->active && $this->roles()->whereHas('permissions', fn($q)=>$q->where('name',$permission))->exists();
     }
 }
