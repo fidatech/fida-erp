@@ -312,11 +312,7 @@ final class TenantHttpIsolationTest extends TestCase
             $tenants[1]->update(['suspended_at' => now()]);
             $suspendedApi = $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
                 ->getJson('http://tenant-b.erp.test/erp/customers/data');
-            $this->assertContains(
-                $suspendedApi->getStatusCode(),
-                [401, 404],
-                'Suspended tenant must not access protected customer data.'
-            );
+            $suspendedApi->assertNotFound();
             $this->assertFalse(app()->bound('erp.current_tenant'));
             $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
                 ->get('http://tenant-b.erp.test/erp/login')->assertNotFound();
