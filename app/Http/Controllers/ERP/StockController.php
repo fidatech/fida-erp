@@ -30,7 +30,7 @@ final class StockController extends Controller
  public function receive(Request $request,GoodsReceiptService $service){
   $warehouseId=$request->input('warehouse_id');
   abort_unless(is_scalar($warehouseId) && ctype_digit((string)$warehouseId)
-   && in_array((int)$warehouseId,$this->allowedWarehouseIds(),true),403);
+   && app(BranchWarehouseAccess::class)->allows((int)$warehouseId),403);
   $data=$request->validate(['request_key'=>'required|uuid', 'supplier_id'=>'required|integer|exists:erp_tenant.suppliers,id',
     'warehouse_id'=>'required|integer|exists:erp_tenant.warehouses,id','currency_code'=>'required|string|size:3',
     'fx_rate'=>'required|numeric|gt:0','lines'=>'required|array|min:1|max:100',
