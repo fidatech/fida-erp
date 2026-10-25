@@ -145,9 +145,10 @@ final class TenantSecurityBaselineTest extends TestCase
     {
         config(['erp.platform_host' => 'platform.erp.test']);
         $request = \Illuminate\Http\Request::create('http://platform.erp.test/platform/erp', 'GET');
-        $request->setUserResolver(fn () => new \Illuminate\Foundation\Auth\User([
-            'name' => 'Not an administrator',
-        ]));
+        $nonAdmin = new \Illuminate\Foundation\Auth\User();
+        $nonAdmin->setAttribute('name', 'Not an administrator');
+        $nonAdmin->setAttribute('erp_platform_admin', false);
+        $request->setUserResolver(fn () => $nonAdmin);
         $middleware = app(\App\Http\Middleware\ErpPlatformAdmin::class);
 
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
