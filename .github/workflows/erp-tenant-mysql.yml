@@ -23,6 +23,9 @@ on:
       - 'app/Http/Middleware/ErpPlatformAdmin.php'
       - 'app/Http/Controllers/ERP/AuthController.php'
       - 'app/Http/Controllers/ERP/PlatformAuthController.php'
+      - 'app/Http/Controllers/ERP/PlatformController.php'
+      - 'app/Providers/AppServiceProvider.php'
+      - '.env.example'
 
 permissions:
   contents: read
