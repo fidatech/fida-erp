@@ -36,6 +36,19 @@ final class ResolveErpTenant
             }
             $session->put('erp.bound_tenant_id', (string) $tenant->getKey());
         }
+        // A previously authenticated account may have been suspended since
+        // login. Recheck its status on every tenant request.
+        $tenantGuard = Auth::guard('erp_tenant');
+        $user = $tenantGuard->user();
+        if ($user && ! (bool) $user->getAttribute('active')) {
+            $tenantGuard->logout();
+            Auth::forgetGuards();
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
+            abort(401, 'Tenant user account inactive.');
+        }
         return $next($request);
         } finally { Auth::forgetGuards(); Auth::shouldUse($priorGuard); $this->connector->disconnect(); }
     }
