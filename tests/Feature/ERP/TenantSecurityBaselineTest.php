@@ -88,6 +88,32 @@ final class TenantSecurityBaselineTest extends TestCase
         }
     }
 
+    public function test_sensitive_tenant_routes_require_permissions(): void
+    {
+        $expected = [
+            'erp.customers.index' => 'customers.manage',
+            'erp.customers.store' => 'customers.manage',
+            'erp.products.index' => 'products.manage',
+            'erp.products.store' => 'products.manage',
+            'erp.stock.index' => 'stock.manage',
+            'erp.sales.index' => 'sales.manage',
+            'erp.sales.store' => 'sales.manage',
+            'erp.sales.post' => 'sales.post',
+        ];
+
+        $routes = app('router')->getRoutes();
+        foreach ($expected as $name => $permission) {
+            $route = $routes->getByName($name);
+            $this->assertNotNull($route, "Missing route {$name}");
+            $this->assertContains('auth:erp_tenant', $route->gatherMiddleware());
+            $this->assertContains(
+                \App\Http\Middleware\ErpPermission::class.':'.$permission,
+                $route->gatherMiddleware(),
+                "Missing permission {$permission} on {$name}"
+            );
+        }
+    }
+
     public function test_tenant_routes_require_tenant_resolution_middleware(): void
     {
         $routes = app('router')->getRoutes();
