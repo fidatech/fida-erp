@@ -148,6 +148,11 @@ jobs:
               id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
             );
             CREATE TABLE erp_test_b.suppliers LIKE erp_test_a.suppliers;
+            CREATE TABLE erp_test_a.sales_invoices (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              warehouse_id BIGINT UNSIGNED NOT NULL
+            );
+            CREATE TABLE erp_test_b.sales_invoices LIKE erp_test_a.sales_invoices;
           "
       - name: Lint tenant middleware and integration tests
         run: |
