@@ -53,6 +53,39 @@ final class TenantSecurityBaselineTest extends TestCase
         $this->assertFalse(app()->bound('erp.current_tenant'));
     }
 
+    public function test_sequential_background_tenant_scopes_do_not_reuse_previous_credentials(): void
+    {
+        $connector = app(TenantConnector::class);
+        $seen = [];
+
+        foreach ([
+            ['first_tenant', 'first_user', 'first_secret'],
+            ['second_tenant', 'second_user', 'second_secret'],
+        ] as [$database, $username, $password]) {
+            $tenant = new Tenant();
+            $tenant->database_name = $database;
+            $tenant->database_username = $username;
+            $tenant->database_password = $password;
+
+            $connector->withinTenant($tenant, function () use (&$seen): void {
+                $seen[] = [
+                    config('database.connections.erp_tenant.database'),
+                    config('database.connections.erp_tenant.username'),
+                    config('database.connections.erp_tenant.password'),
+                ];
+                $this->assertTrue(app()->bound('erp.current_tenant'));
+            });
+
+            $this->assertNull(config('database.connections.erp_tenant'));
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+        }
+
+        $this->assertSame([
+            ['first_tenant', 'first_user', 'first_secret'],
+            ['second_tenant', 'second_user', 'second_secret'],
+        ], $seen);
+    }
+
     public function test_scoped_background_execution_cleans_up_after_callback_exception(): void
     {
         $tenant = new Tenant();
