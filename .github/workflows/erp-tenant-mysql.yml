@@ -140,10 +140,25 @@ jobs:
               code VARCHAR(40), name VARCHAR(255)
             );
             CREATE TABLE erp_test_b.warehouses LIKE erp_test_a.warehouses;
+            CREATE TABLE erp_test_a.products (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              name VARCHAR(190) NOT NULL
+            );
+            CREATE TABLE erp_test_b.products LIKE erp_test_a.products;
             CREATE TABLE erp_test_a.product_variants (
-              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              product_id BIGINT UNSIGNED NULL,
+              sku VARCHAR(100) NULL,
+              average_cost DECIMAL(18,4) NOT NULL DEFAULT 0
             );
             CREATE TABLE erp_test_b.product_variants LIKE erp_test_a.product_variants;
+            CREATE TABLE erp_test_a.stock_balances (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              warehouse_id BIGINT UNSIGNED NOT NULL,
+              product_variant_id BIGINT UNSIGNED NOT NULL,
+              quantity DECIMAL(18,4) NOT NULL DEFAULT 0
+            );
+            CREATE TABLE erp_test_b.stock_balances LIKE erp_test_a.stock_balances;
             CREATE TABLE erp_test_a.suppliers (
               id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
               name VARCHAR(190) NOT NULL DEFAULT 'CI Supplier'
