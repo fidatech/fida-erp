@@ -136,6 +136,50 @@ final class TenantHttpIsolationTest extends TestCase
                 }
             }
 
+            // Branch-scoped controllers must never accept an unassigned
+            // warehouse even when the user has the module permission.
+            $branchDb = DB::connection('fixture_A');
+            $stockPermissionId = $branchDb->table('permissions')->insertGetId(['name' => 'stock.manage']);
+            $salesPermissionId = $branchDb->table('permissions')->insertGetId(['name' => 'sales.manage']);
+            $postPermissionId = $branchDb->table('permissions')->insertGetId(['name' => 'sales.post']);
+            $customerRoleId = $branchDb->table('roles')->where('name', 'Customer manager')->value('id');
+            foreach ([$stockPermissionId, $salesPermissionId, $postPermissionId] as $newPermissionId) {
+                $branchDb->table('permission_role')->insert([
+                    'role_id' => $customerRoleId, 'permission_id' => $newPermissionId,
+                ]);
+            }
+            $this->flushSession();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->post('http://tenant-a.erp.test/erp/login', [
+                    'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                ])->assertRedirect();
+            $restrictedWarehouse = (int) $branchDb->table('warehouses')
+                ->where('code', 'RESTRICTED')->value('id');
+            $allowedWarehouse = (int) $branchDb->table('warehouses')
+                ->where('code', 'ALLOWED')->value('id');
+            $this->assertNotSame($restrictedWarehouse, $allowedWarehouse);
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->postJson('http://tenant-a.erp.test/erp/sales', [
+                    'request_key' => (string) \Illuminate\Support\Str::uuid(),
+                    'customer_id' => 1, 'warehouse_id' => $restrictedWarehouse,
+                    'currency_code' => 'AFN', 'fx_rate' => 1,
+                    'lines' => [['product_variant_id' => 1, 'quantity' => 1, 'unit_price' => 1]],
+                ])->assertForbidden();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->postJson('http://tenant-a.erp.test/erp/stock/receive', [
+                    'request_key' => (string) \Illuminate\Support\Str::uuid(),
+                    'supplier_id' => 1, 'warehouse_id' => $restrictedWarehouse,
+                    'currency_code' => 'AFN', 'fx_rate' => 1,
+                    'lines' => [['product_variant_id' => 1, 'quantity' => 1, 'unit_cost' => 1]],
+                ])->assertForbidden();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            $this->flushSession();
+            foreach ([$stockPermissionId, $salesPermissionId, $postPermissionId] as $newPermissionId) {
+                $branchDb->table('permission_role')->where('permission_id', $newPermissionId)->delete();
+                $branchDb->table('permissions')->where('id', $newPermissionId)->delete();
+            }
+
             // Prove the tenant connection selects only its own customer records.
             // These assertions deliberately bypass HTTP authorization; they check
             // physical database separation independently of user permissions.
