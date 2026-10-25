@@ -41,7 +41,7 @@ final class ResponsiveUiContractTest extends TestCase
 
     public function test_responsive_styles_include_phone_tablet_and_mobile_cards(): void
     {
-        $css = file_get_contents(public_path('fida-erp/erp.css'));
+        $css = file_get_contents(base_path('public/fida-erp/erp.css'));
         foreach (['max-width:600px', 'max-width:820px', 'erp-responsive-list', 'erp-admin-nav', 'erp-mobile-overlay'] as $marker) {
             $this->assertStringContainsString($marker, $css);
         }
