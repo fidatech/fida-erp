@@ -8,6 +8,8 @@ use App\Console\Commands\CreateErpPlatformUser;
 use App\Models\ERP\Tenant\TenantUser;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Queue;
+use App\Services\ERP\TenantConnector;
 
 final class ErpServiceProvider extends ServiceProvider
 {
@@ -23,6 +25,16 @@ final class ErpServiceProvider extends ServiceProvider
                 'auth.providers.erp_tenant_users' => ['driver' => 'eloquent', 'model' => TenantUser::class]]);
         if ($this->app->runningInConsole()) $this->commands([ProvisionErpTenant::class, PromoteErpPlatformAdmin::class, CreateErpPlatformUser::class]);
         Route::aliasMiddleware('erp.tenant', ResolveErpTenant::class);
+        // Long-lived queue workers must never retain tenant PDO connections,
+        // authentication guards or tenant context between successive jobs.
+        Queue::after(function (): void {
+            app(TenantConnector::class)->disconnect();
+            app('auth')->forgetGuards();
+        });
+        Queue::failing(function (): void {
+            app(TenantConnector::class)->disconnect();
+            app('auth')->forgetGuards();
+        });
         $this->loadViewsFrom(resource_path('views/erp'), 'erp');
         $this->loadTranslationsFrom(resource_path('lang'), 'erp');
     }
