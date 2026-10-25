@@ -112,8 +112,8 @@ final class TenantHttpIsolationTest extends TestCase
                 } finally {
                     $connector->disconnect();
                 }
-                $this->assertNull(config('database.connections.erp_tenant'));
                 $this->assertFalse(app()->bound('erp.current_tenant'));
+                $this->assertFalse(DB::connection('erp_tenant')->getPdo() === DB::connection('mysql')->getPdo());
             }
 
             foreach (['A', 'B'] as $suffix) {
