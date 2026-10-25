@@ -5,6 +5,6 @@
 @foreach(['name','sku','barcode','sale_price'] as $f)<div><label class="erp-label">{{ __('erp::ui.'.$f) }}</label><input class="erp-field" name="{{ $f }}" value="{{ old($f) }}" @required(in_array($f,['name','sale_price']))></div>@endforeach
 </div><p><button class="erp-btn">{{ __('erp::ui.save') }}</button></p></form></div>
 <div class="erp-card"><form class="erp-flex" method="GET"><input class="erp-field" style="max-width:280px" name="q" value="{{ $q }}" placeholder="{{ __('erp::ui.search') }}"><button class="erp-btn">{{ __('erp::ui.search') }}</button></form>
-<div class="erp-table-scroll"><table class="erp-table"><thead><tr><th>ID</th><th>{{ __('erp::ui.name') }}</th><th>{{ __('erp::ui.sku') }}</th></tr></thead><tbody>
-@foreach($products as $p)<tr><td>{{ $p->id }}</td><td>{{ $p->name }}</td><td>{{ $p->sku }}</td></tr>@endforeach</tbody></table></div><div class="erp-pagination">{{ $products->links() }}</div></div>
+<div class="erp-table-scroll"><table class="erp-table erp-responsive-list"><thead><tr><th>ID</th><th>{{ __('erp::ui.name') }}</th><th>{{ __('erp::ui.sku') }}</th></tr></thead><tbody>
+@forelse($products as $p)<tr><td data-label="ID">{{ $p->id }}</td><td data-label="{{ __('erp::ui.name') }}">{{ $p->name }}</td><td data-label="{{ __('erp::ui.sku') }}">{{ $p->sku }}</td></tr>@empty<tr><td colspan="3" class="erp-empty-state">—</td></tr>@endforelse</tbody></table></div><div class="erp-pagination">{{ $products->links() }}</div></div>
 @endsection
