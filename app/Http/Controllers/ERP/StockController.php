@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\ERP;
 use App\Http\Controllers\Controller;
+use App\Services\ERP\BranchWarehouseAccess;
 use App\Services\ERP\GoodsReceiptService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -8,13 +9,11 @@ use Illuminate\Support\Str;
 use DomainException;
 final class StockController extends Controller
 {
- private function allowedWarehouseIds(): array {
-  return DB::connection('erp_tenant')->table('warehouses as w')
-   ->join('branch_user as bu','bu.branch_id','=','w.branch_id')
-   ->join('branches as b','b.id','=','w.branch_id')
-   ->where('bu.user_id',auth('erp_tenant')->id())->where('b.active',true)
-   ->pluck('w.id')->map(fn($id)=>(int)$id)->all();
- }
+    private function allowedWarehouseIds(): array
+    {
+        return app(BranchWarehouseAccess::class)->allowedWarehouseIds();
+    }
+
  public function index(){
   $db=DB::connection('erp_tenant');
   return view('erp.stock.index',['warehouses'=>$db->table('warehouses')->whereIn('id',$this->allowedWarehouseIds())->get(),'currencies'=>$db->table('currencies')->where('active',1)->get(),
