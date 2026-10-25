@@ -50,6 +50,44 @@ final class TenantSecurityBaselineTest extends TestCase
         $this->assertFalse(app()->bound('erp.current_tenant'));
     }
 
+    public function test_tenant_connection_rejects_invalid_username_without_binding_context(): void
+    {
+        $tenant = new Tenant();
+        $tenant->database_name = 'valid_database';
+        $tenant->database_username = 'invalid-user';
+        $tenant->database_password = 'placeholder';
+
+        try {
+            app(TenantConnector::class)->connect($tenant);
+            $this->fail('Invalid tenant username was accepted.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertSame('Invalid tenant database username', $e->getMessage());
+        }
+
+        $this->assertFalse(app()->bound('erp.current_tenant'));
+    }
+
+    public function test_tenant_permission_middleware_denies_unauthenticated_requests(): void
+    {
+        $request = \Illuminate\Http\Request::create('/erp/customers', 'GET');
+        $middleware = app(\App\Http\Middleware\ErpPermission::class);
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $middleware->handle($request, fn () => response('unexpected'), 'customers.manage');
+    }
+
+    public function test_platform_routes_require_web_auth_and_admin_middleware(): void
+    {
+        $routes = app('router')->getRoutes();
+        foreach (['erp.platform.index', 'erp.platform.plans', 'erp.platform.tenant.status'] as $name) {
+            $route = $routes->getByName($name);
+            $this->assertNotNull($route, "Missing route {$name}");
+            $middleware = $route->gatherMiddleware();
+            $this->assertContains('auth:web', $middleware);
+            $this->assertContains(\App\Http\Middleware\ErpPlatformAdmin::class, $middleware);
+        }
+    }
+
     public function test_tenant_routes_require_tenant_resolution_middleware(): void
     {
         $routes = app('router')->getRoutes();
