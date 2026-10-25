@@ -8,6 +8,20 @@ use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
 {
+    public function test_queue_failed_event_invokes_registered_tenant_cleanup(): void
+    {
+        app()->instance('erp.current_tenant', new \stdClass());
+
+        $job = new \Illuminate\Queue\Jobs\SyncJob(
+            app(), '{"uuid":"failed-test","displayName":"cleanup-failed-test","job":"cleanup-failed-test","data":{}}', 'sync', 'default'
+        );
+        app('events')->dispatch(new \Illuminate\Queue\Events\JobFailed(
+            'sync', $job, new \RuntimeException('Simulated failed job')
+        ));
+
+        $this->assertFalse(app()->bound('erp.current_tenant'));
+    }
+
     public function test_queue_after_event_invokes_registered_tenant_cleanup(): void
     {
         app()->instance('erp.current_tenant', new \stdClass());
