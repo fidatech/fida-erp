@@ -91,3 +91,23 @@ html,body{max-width:100%;min-width:0}
  #invoice-lines>tr,#receipt-lines>tr{grid-template-columns:minmax(0,1fr)}
  #invoice-lines>tr>td,#receipt-lines>tr>td{grid-column:1/-1}
 }
+
+
+/* Mobile read-only listings become scannable record cards. */
+.erp-row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.erp-row-actions form{display:inline-flex!important}
+.erp-empty-state{text-align:center!important;padding:32px 16px!important;color:#627389;white-space:normal!important}
+@media (max-width:600px){
+ .erp-table-scroll:has(.erp-responsive-list){overflow:visible}
+ .erp-responsive-list{display:block;min-width:0;width:100%}
+ .erp-responsive-list thead{display:none}
+ .erp-responsive-list tbody{display:grid;gap:12px}
+ .erp-responsive-list tbody>tr{display:grid;grid-template-columns:minmax(0,1fr);padding:14px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 2px 7px rgba(20,43,69,.04)}
+ .erp-responsive-list tbody>tr>td{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:7px 0;border:0;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:end}
+ .erp-responsive-list tbody>tr>td::before{content:attr(data-label);flex:0 0 38%;font-size:12px;font-weight:650;color:#60748d;text-align:start}
+ .erp-responsive-list tbody>tr>td.erp-row-actions{justify-content:flex-end;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px;margin-top:5px}
+ .erp-responsive-list tbody>tr>td.erp-row-actions::before{margin-inline-end:auto}
+ .erp-responsive-list .erp-row-actions .erp-btn{min-height:40px}
+ .erp-responsive-list tbody>tr>td.erp-empty-state{display:block;text-align:center}
+ .erp-responsive-list tbody>tr>td.erp-empty-state::before{display:none}
+}
