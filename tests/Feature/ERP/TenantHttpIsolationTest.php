@@ -142,6 +142,15 @@ final class TenantHttpIsolationTest extends TestCase
                     $this->assertFalse($user->canAccessBranch(0));
                     $this->assertFalse($user->canAccessBranch(-1));
                     $this->assertFalse($user->canAccessBranch(2147483647));
+                    // Membership must be evaluated against this tenant's
+                    // database, never against a similarly numbered branch
+                    // in another tenant's database.
+                    $this->assertSame(1, DB::connection('erp_tenant')
+                        ->table('branch_user')->where('user_id', $user->getKey())
+                        ->where('branch_id', $allowed)->count());
+                    $this->assertSame(0, DB::connection('erp_tenant')
+                        ->table('branch_user')->where('user_id', $user->getKey())
+                        ->where('branch_id', $restricted)->count());
                     DB::connection('erp_tenant')->table('branches')->where('id', $allowed)->update(['active' => 0]);
                     $this->assertFalse($user->canAccessBranch((int) $allowed));
                     DB::connection('erp_tenant')->table('branches')->where('id', $allowed)->update(['active' => 1]);
