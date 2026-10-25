@@ -30,15 +30,15 @@ final class ErpServiceProvider extends ServiceProvider
         Queue::before(function (): void {
             // Every attempt, including retries, begins without the previous
             // job's tenant connection or cached authentication guards.
-            app(TenantConnector::class)->disconnect();
+            app(TenantConnector::class)->resetWorkerContext();
             app('auth')->forgetGuards();
         });
         Queue::after(function (): void {
-            app(TenantConnector::class)->disconnect();
+            app(TenantConnector::class)->resetWorkerContext();
             app('auth')->forgetGuards();
         });
         Queue::failing(function (): void {
-            app(TenantConnector::class)->disconnect();
+            app(TenantConnector::class)->resetWorkerContext();
             app('auth')->forgetGuards();
         });
         $this->loadViewsFrom(resource_path('views/erp'), 'erp');
