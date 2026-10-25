@@ -115,6 +115,19 @@ final class TenantHttpIsolationTest extends TestCase
                 $this->assertFalse(app()->bound('erp.current_tenant'));
             }
 
+            // Scheduled/background scopes must execute real SQL against
+            // only their selected tenant and release credentials afterward.
+            foreach (['A', 'B', 'A'] as $suffix) {
+                $index = $suffix === 'A' ? 0 : 1;
+                $codes = $connector->withinTenant($tenants[$index], function (): array {
+                    return DB::connection('erp_tenant')->table('customers')->pluck('code')->all();
+                });
+                $this->assertContains('ONLY_'.$suffix, $codes);
+                $this->assertNotContains('ONLY_'.($suffix === 'A' ? 'B' : 'A'), $codes);
+                $this->assertNull(config('database.connections.erp_tenant'));
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            }
+
             foreach (['A', 'B'] as $suffix) {
                 // Independent browser sessions: tenant A's session must not
                 // accidentally be reused for tenant B's separate login.
