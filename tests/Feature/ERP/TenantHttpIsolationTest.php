@@ -30,7 +30,20 @@ final class TenantHttpIsolationTest extends TestCase
         $config['database'] = $names[0];
         $config['username'] = getenv('ERP_TEST_CENTRAL_USER');
         $config['password'] = getenv('ERP_TEST_CENTRAL_PASSWORD');
-        config(['database.connections.mysql' => $config, 'session.driver' => 'array', 'session.domain' => null]);
+        // Exercise a persistent filesystem-backed session store rather than
+        // Laravel's in-memory array session driver.
+        $sessionPath = storage_path('framework/erp-ci-sessions');
+        if (! is_dir($sessionPath) && ! mkdir($sessionPath, 0700, true) && ! is_dir($sessionPath)) {
+            throw new \RuntimeException('Unable to create disposable session directory.');
+        }
+        config([
+            'database.connections.mysql' => $config,
+            'session.driver' => 'file',
+            'session.files' => $sessionPath,
+            'session.domain' => null,
+            'session.http_only' => true,
+            'session.same_site' => 'lax',
+        ]);
         DB::purge('mysql');
 
         $tenants = [];
