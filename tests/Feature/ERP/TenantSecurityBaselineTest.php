@@ -509,6 +509,21 @@ final class TenantSecurityBaselineTest extends TestCase
         }
     }
 
+    public function test_provisioning_rejects_non_hostname_domain_before_credentials(): void
+    {
+        foreach (['tenant.example.test/path', 'tenant.example.test:8443', 'tenant.example.test?x=1', 'tenant..example.test'] as $domain) {
+            $exit = \Illuminate\Support\Facades\Artisan::call('erp:provision', [
+                'slug' => 'example-tenant',
+                'domain' => $domain,
+                'database' => 'erp_test_example',
+                '--db-user' => 'erp_example',
+                '--email' => 'owner@example.test',
+            ]);
+            $this->assertSame(1, $exit, "Invalid domain was accepted: {$domain}");
+            $this->assertStringContainsString('Invalid slug, hostname or database', \Illuminate\Support\Facades\Artisan::output());
+        }
+    }
+
     public function test_tenant_routes_require_tenant_resolution_middleware(): void
     {
         $routes = app('router')->getRoutes();
