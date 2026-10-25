@@ -30,3 +30,10 @@ Phases 2.34–2.46 covered tenant host resolution, proxy boundaries, session sco
 - Later commits added lifecycle flag checks, safe environment contract tests, tenant owner HQ membership assignment and MySQL workflow triggers. **Check CI on the final head before considering the automated gate complete.**
 - The tenant owner provisioning regression test currently checks the command's source contract; it does **not** substitute for an end-to-end tenant provisioning smoke test on a disposable MySQL database.
 - Development hardening can be considered implemented, but staging acceptance, legacy tenant branch migration, backup restore and production configuration remain release blockers.
+
+## Legacy branch migration preflight (read-only)
+1. Run `php artisan erp:audit-branch-memberships <tenant-id>` for each active tenant from an authorized maintenance environment. Record only the counts, not user names or credentials.
+2. For any nonzero missing count, obtain the tenant owner's explicit branch-to-user mapping and apply it through an authorized, audited administration workflow. Never infer permissions from an existing owner role or grant all users every branch.
+3. Repeat the audit and test permitted/restricted warehouses, sales and invoice PDFs before scheduling cutover.
+4. Suspended tenants intentionally fail the audit until reactivated by an authorized administrator.
+5. The command is read-only; its presence does not certify that a legacy tenant has been migrated.
