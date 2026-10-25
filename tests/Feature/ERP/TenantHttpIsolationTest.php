@@ -308,6 +308,19 @@ final class TenantHttpIsolationTest extends TestCase
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
+            // Membership restoration should be effective on the next request
+            // without rebuilding the tenant session or caching stale denials.
+            $restoredPage = $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->get('http://tenant-a.erp.test/erp/sales');
+            $restoredPage->assertOk()->assertSee('ALLOWED-INVOICE')
+                ->assertDontSee('RESTRICTED-INVOICE');
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            $restoredCreate = $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->get('http://tenant-a.erp.test/erp/sales/create');
+            $restoredCreate->assertOk()->assertSee('Allowed warehouse')
+                ->assertDontSee('Restricted warehouse');
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+
             $this->flushSession();
             foreach ([$stockPermissionId, $salesPermissionId, $postPermissionId] as $newPermissionId) {
                 $branchDb->table('permission_role')->where('permission_id', $newPermissionId)->delete();
