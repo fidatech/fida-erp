@@ -156,6 +156,16 @@ jobs:
               status VARCHAR(30) NULL, created_at TIMESTAMP NULL
             );
             CREATE TABLE erp_test_b.sales_invoices LIKE erp_test_a.sales_invoices;
+            CREATE TABLE erp_test_a.currencies (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              code CHAR(3), active BOOLEAN
+            );
+            CREATE TABLE erp_test_b.currencies LIKE erp_test_a.currencies;
+            CREATE TABLE erp_test_a.company_settings (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              base_currency CHAR(3)
+            );
+            CREATE TABLE erp_test_b.company_settings LIKE erp_test_a.company_settings;
           "
       - name: Lint tenant middleware and integration tests
         run: |
