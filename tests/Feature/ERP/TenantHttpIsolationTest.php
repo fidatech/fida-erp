@@ -137,6 +137,11 @@ final class TenantHttpIsolationTest extends TestCase
                     $user->active = true;
                     $this->assertTrue($user->allowed('customers.manage'));
                     $this->assertTrue($user->canAccessBranch((int) $allowed));
+                    // A user may not claim a branch by passing its ID;
+                    // authorization must depend on an actual membership row.
+                    $this->assertFalse($user->canAccessBranch(0));
+                    $this->assertFalse($user->canAccessBranch(-1));
+                    $this->assertFalse($user->canAccessBranch(2147483647));
                     DB::connection('erp_tenant')->table('branches')->where('id', $allowed)->update(['active' => 0]);
                     $this->assertFalse($user->canAccessBranch((int) $allowed));
                     DB::connection('erp_tenant')->table('branches')->where('id', $allowed)->update(['active' => 1]);
