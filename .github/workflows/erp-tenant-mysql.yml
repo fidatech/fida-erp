@@ -11,6 +11,13 @@ on:
       - 'app/Http/Middleware/ErpPermission.php'
       - 'app/Models/ERP/Tenant/**'
       - 'routes/erp.php'
+      - 'routes/erp_platform.php'
+      - 'bootstrap/app.php'
+      - 'config/session.php'
+      - 'config/auth.php'
+      - 'app/Http/Middleware/ErpPlatformAdmin.php'
+      - 'app/Http/Controllers/ERP/AuthController.php'
+      - 'app/Http/Controllers/ERP/PlatformAuthController.php'
 
 permissions:
   contents: read
