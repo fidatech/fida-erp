@@ -223,6 +223,23 @@ jobs:
           docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
             SELECT COUNT(*) AS central_tables FROM information_schema.tables WHERE table_schema='erp_test_schema_central';
             SELECT COUNT(*) AS tenant_tables FROM information_schema.tables WHERE table_schema='erp_test_schema_tenant';"
+      - name: Assert fresh schema isolation and branch foreign keys
+        run: |
+          set -euo pipefail
+          mysql_ci() {
+            docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -N -s -e "$1"
+          }
+          central_tables="$(mysql_ci "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='erp_test_schema_central' AND table_name IN ('users','erp_tenants','erp_plans','erp_subscriptions');")"
+          tenant_tables="$(mysql_ci "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='erp_test_schema_tenant' AND table_name IN ('users','branches','branch_user','warehouses','sales_invoices','stock_balances');")"
+          tenant_branch_keys="$(mysql_ci "SELECT COUNT(*) FROM information_schema.key_column_usage WHERE table_schema='erp_test_schema_tenant' AND table_name='branch_user' AND referenced_table_name IN ('branches','users');")"
+          central_leaks="$(mysql_ci "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='erp_test_schema_central' AND table_name IN ('branch_user','sales_invoices','stock_balances');")"
+          tenant_leaks="$(mysql_ci "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='erp_test_schema_tenant' AND table_name IN ('erp_tenants','erp_plans','erp_subscriptions');")"
+          test "$central_tables" -eq 4
+          test "$tenant_tables" -eq 6
+          test "$tenant_branch_keys" -eq 2
+          test "$central_leaks" -eq 0
+          test "$tenant_leaks" -eq 0
+          echo "Fresh MySQL schemas have required tables, isolated ownership and branch membership foreign keys."
       - name: Lint tenant middleware and integration tests
         run: |
           php -l app/Http/Middleware/ResolveErpTenant.php
