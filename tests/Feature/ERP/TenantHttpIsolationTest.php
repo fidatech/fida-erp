@@ -273,6 +273,35 @@ final class TenantHttpIsolationTest extends TestCase
             // excluding rate limiting from the remaining isolation cases.
             $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
 
+            // Permission revocation must take effect for an existing session
+            // without relying on logout or stale cached role assignments.
+            $this->flushSession();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->post('http://tenant-a.erp.test/erp/login', [
+                    'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                ])->assertRedirect();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->getJson('http://tenant-a.erp.test/erp/customers/data')->assertOk();
+
+            $permissionId = DB::connection('fixture_A')->table('permissions')
+                ->where('name', 'customers.manage')->value('id');
+            DB::connection('fixture_A')->table('permission_role')
+                ->where('permission_id', $permissionId)->delete();
+            try {
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->getJson('http://tenant-a.erp.test/erp/customers/data')->assertForbidden();
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            } finally {
+                $roleId = DB::connection('fixture_A')->table('roles')
+                    ->where('name', 'Customer manager')->value('id');
+                DB::connection('fixture_A')->table('permission_role')->insert([
+                    'role_id' => $roleId, 'permission_id' => $permissionId,
+                ]);
+            }
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->getJson('http://tenant-a.erp.test/erp/customers/data')->assertOk();
+            $this->flushSession();
+
             // Revoking a user must invalidate an already authenticated
             // session without requiring the user to log out manually.
             $this->flushSession();
