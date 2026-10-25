@@ -27,6 +27,12 @@ final class ErpServiceProvider extends ServiceProvider
         Route::aliasMiddleware('erp.tenant', ResolveErpTenant::class);
         // Long-lived queue workers must never retain tenant PDO connections,
         // authentication guards or tenant context between successive jobs.
+        Queue::before(function (): void {
+            // Every attempt, including retries, begins without the previous
+            // job's tenant connection or cached authentication guards.
+            app(TenantConnector::class)->disconnect();
+            app('auth')->forgetGuards();
+        });
         Queue::after(function (): void {
             app(TenantConnector::class)->disconnect();
             app('auth')->forgetGuards();
