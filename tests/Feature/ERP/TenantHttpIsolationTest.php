@@ -186,6 +186,30 @@ final class TenantHttpIsolationTest extends TestCase
             $this->assertFalse(app()->bound('erp.current_tenant'));
             $this->assertSame($restrictedWarehouse, (int) $branchDb->table('sales_invoices')
                 ->where('id', $restrictedInvoiceId)->value('warehouse_id'));
+            // Sales listing must not reveal invoices from another branch.
+            $allowedInvoiceId = $branchDb->table('sales_invoices')->insertGetId([
+                'warehouse_id' => $allowedWarehouse,
+                'customer_id' => 1, 'number' => 'ALLOWED-INVOICE',
+                'total' => 10, 'currency_code' => 'AFN', 'status' => 'draft',
+                'created_at' => now(),
+            ]);
+            $branchDb->table('sales_invoices')->where('id', $restrictedInvoiceId)->update([
+                'customer_id' => 1, 'number' => 'RESTRICTED-INVOICE',
+                'total' => 10, 'currency_code' => 'AFN', 'status' => 'draft',
+                'created_at' => now(),
+            ]);
+            $salesPage = $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->get('http://tenant-a.erp.test/erp/sales');
+            $salesPage->assertOk()->assertSee('ALLOWED-INVOICE')
+                ->assertDontSee('RESTRICTED-INVOICE');
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+
+            // The sale creation page must offer only assigned warehouses.
+            $createPage = $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->get('http://tenant-a.erp.test/erp/sales/create');
+            $createPage->assertOk()->assertSee('Allowed warehouse')
+                ->assertDontSee('Restricted warehouse');
+            $this->assertFalse(app()->bound('erp.current_tenant'));
             $this->flushSession();
             foreach ([$stockPermissionId, $salesPermissionId, $postPermissionId] as $newPermissionId) {
                 $branchDb->table('permission_role')->where('permission_id', $newPermissionId)->delete();
