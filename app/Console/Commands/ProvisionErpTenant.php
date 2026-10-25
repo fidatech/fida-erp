@@ -40,7 +40,7 @@ final class ProvisionErpTenant extends Command
             $db=DB::connection('erp_tenant');
             $db->transaction(function()use($db,$name,$email,$password){
                 $db->table('company_settings')->insert(['name'=>$name,'base_currency'=>'AFN','locale'=>'en','timezone'=>'Asia/Kabul','created_at'=>now(),'updated_at'=>now()]);
-                $db->table('branches')->insert(['code'=>'HQ','name'=>'Head Office','active'=>1,'created_at'=>now(),'updated_at'=>now()]);
+                $headOfficeId=$db->table('branches')->insertGetId(['code'=>'HQ','name'=>'Head Office','active'=>1,'created_at'=>now(),'updated_at'=>now()]);
                 foreach([['AFN','Afghan Afghani',2],['USD','US Dollar',2],['PKR','Pakistani Rupee',2],['IRR','Iranian Rial',0],['EUR','Euro',2],['AED','UAE Dirham',2]] as [$code,$currency,$minor]) {
                     $db->table('currencies')->insert(['code'=>$code,'name'=>$currency,'minor_units'=>$minor,'active'=>1]);
                 }
@@ -52,13 +52,16 @@ final class ProvisionErpTenant extends Command
                     $db->table('accounts')->insert(['code'=>$code,'name'=>$n,'type'=>$type,'parent_id'=>$parentId,'is_postable'=>$postable,'active'=>1,'created_at'=>now(),'updated_at'=>now()]);
                 }
                 $year=(int)date('Y');$db->table('fiscal_periods')->insert(['name'=>(string)$year,'starts_on'=>$year.'-01-01','ends_on'=>$year.'-12-31','is_closed'=>0,'created_at'=>now(),'updated_at'=>now()]);
-                $db->table('warehouses')->insert(['branch_id'=>1,'code'=>'MAIN','name'=>'Main Warehouse','created_at'=>now(),'updated_at'=>now()]);
+                $db->table('warehouses')->insert(['branch_id'=>$headOfficeId,'code'=>'MAIN','name'=>'Main Warehouse','created_at'=>now(),'updated_at'=>now()]);
                 $roleId=$db->table('roles')->insertGetId(['name'=>'owner','created_at'=>now(),'updated_at'=>now()]);
                 foreach(['dashboard.view','customers.manage','products.manage','stock.manage','sales.manage','sales.post','reports.view','accounts.view','settings.manage'] as $perm){
                     $id=$db->table('permissions')->insertGetId(['name'=>$perm]);$db->table('permission_role')->insert(['role_id'=>$roleId,'permission_id'=>$id]);
                 }
                 $id=$db->table('users')->insertGetId(['name'=>'Business Owner','email'=>$email,'password'=>Hash::make($password),'locale'=>'en','active'=>1,'created_at'=>now(),'updated_at'=>now()]);
                 $db->table('role_user')->insert(['role_id'=>$roleId,'user_id'=>$id]);
+                // Explicitly assign the new owner to the new HQ branch.
+                // Do not grant memberships to other users or existing tenants.
+                $db->table('branch_user')->insert(['branch_id'=>$headOfficeId,'user_id'=>$id,'created_at'=>now(),'updated_at'=>now()]);
             });
             $tenant->status='active';$tenant->save();
             $this->info('Tenant created: https://'.$domain.'/erp/login');
