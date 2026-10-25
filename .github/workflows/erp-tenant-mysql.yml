@@ -71,7 +71,13 @@ jobs:
           php-version: '8.4'
           extensions: mbstring, pdo_mysql, pdo_sqlite, intl, gd, bcmath
           coverage: none
-      - run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Install PHP dependencies with retry for transient GitHub rate limits
+        run: |
+          for attempt in 1 2 3; do
+            composer install --no-interaction --prefer-dist --no-progress && break
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 15))
+          done
       - name: Provision disposable databases and isolated users
         run: |
           docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
@@ -192,6 +198,7 @@ jobs:
             CREATE DATABASE erp_test_schema_tenant;"
           DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
           DB_DATABASE=erp_test_schema_central DB_USERNAME=root DB_PASSWORD=ci-disposable-root-only \
+          php artisan migrate --path=database/migrations/0001_01_01_000000_create_users_table.php --force --no-interaction
           php artisan migrate --path=database/migrations/erp_central --force --no-interaction
           DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
           DB_DATABASE=erp_test_schema_tenant DB_USERNAME=root DB_PASSWORD=ci-disposable-root-only \
