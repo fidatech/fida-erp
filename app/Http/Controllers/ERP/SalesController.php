@@ -12,7 +12,7 @@ final class SalesController extends Controller
     {
         $id = $request->input('warehouse_id');
         abort_unless(is_scalar($id) && ctype_digit((string) $id)
-            && in_array((int) $id, $this->allowedWarehouseIds(), true), 403);
+            && app(BranchWarehouseAccess::class)->allows((int) $id), 403);
     }
 
     private function allowedWarehouseIds(): array
@@ -43,7 +43,7 @@ final class SalesController extends Controller
     }
     public function post(int $id,SaleService $service){
         $warehouseId = DB::connection('erp_tenant')->table('sales_invoices')->where('id', $id)->value('warehouse_id');
-        abort_unless($warehouseId && in_array((int) $warehouseId, $this->allowedWarehouseIds(), true), 403);
+        abort_unless($warehouseId && app(BranchWarehouseAccess::class)->allows((int) $warehouseId), 403);
         try{$service->post($id);}catch(DomainException|\InvalidArgumentException $e){return back()->withErrors(['sale'=>$e->getMessage()]);}
         return back()->with('success',__('erp::ui.invoice_posted'));
     }
