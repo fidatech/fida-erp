@@ -8,6 +8,8 @@ on:
       - 'tests/Feature/ERP/**'
       - 'app/Http/Middleware/ResolveErpTenant.php'
       - 'app/Services/ERP/TenantConnector.php'
+      - 'app/Providers/ErpServiceProvider.php'
+      - 'database/migrations/erp_central/**'
       - 'app/Http/Middleware/ErpPermission.php'
       - 'app/Http/Controllers/ERP/SalesController.php'
       - 'app/Http/Controllers/ERP/StockController.php'
