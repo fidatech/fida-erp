@@ -195,13 +195,15 @@ jobs:
         run: |
           docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
             CREATE DATABASE erp_test_schema_central;
-            CREATE DATABASE erp_test_schema_tenant;"
+            CREATE DATABASE erp_test_schema_tenant;
+            GRANT ALL PRIVILEGES ON erp_test_schema_central.* TO 'erp_test_central_user'@'%';
+            GRANT ALL PRIVILEGES ON erp_test_schema_tenant.* TO 'erp_test_a_user'@'%';"
           DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
-          DB_DATABASE=erp_test_schema_central DB_USERNAME=root DB_PASSWORD=ci-disposable-root-only \
+          DB_DATABASE=erp_test_schema_central DB_USERNAME=erp_test_central_user DB_PASSWORD=ci-central-test-only \
           php artisan migrate --path=database/migrations/0001_01_01_000000_create_users_table.php --force --no-interaction
           php artisan migrate --path=database/migrations/erp_central --force --no-interaction
           DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
-          DB_DATABASE=erp_test_schema_tenant DB_USERNAME=root DB_PASSWORD=ci-disposable-root-only \
+          DB_DATABASE=erp_test_schema_tenant DB_USERNAME=erp_test_a_user DB_PASSWORD=ci-tenant-a-test-only \
           php -r '
             require "vendor/autoload.php";
             $app = require "bootstrap/app.php";
