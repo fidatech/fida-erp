@@ -142,6 +142,27 @@ final class TenantHttpIsolationTest extends TestCase
             }
             $this->flushSession();
 
+            // The central SaaS platform uses the web guard, never the
+            // tenant guard. A tenant login cannot authenticate platform APIs.
+            config(['erp.platform_host' => 'platform.erp.test']);
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->post('http://tenant-b.erp.test/erp/login', [
+                    'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                ])->assertRedirect();
+            $this->withServerVariables(['HTTP_HOST' => 'platform.erp.test'])
+                ->getJson('http://platform.erp.test/platform/erp')
+                ->assertUnauthorized();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            // The platform login endpoint is not available on tenant hosts.
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->get('http://tenant-b.erp.test/platform/erp/login')
+                ->assertNotFound();
+            // A platform host must not resolve as a tenant host.
+            $this->withServerVariables(['HTTP_HOST' => 'platform.erp.test'])
+                ->get('http://platform.erp.test/erp/login')
+                ->assertNotFound();
+            $this->flushSession();
+
             $this->withServerVariables(['HTTP_HOST' => 'unknown.erp.test'])
                 ->get('http://unknown.erp.test/erp/login')->assertNotFound();
 
