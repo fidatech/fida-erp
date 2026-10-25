@@ -67,7 +67,9 @@ final class ProvisionErpTenant extends Command
             $this->info('Tenant created: https://'.$domain.'/erp/login');
             return self::SUCCESS;
         }catch(Throwable $e){
-            $this->error('Provisioning failed: '.$e->getMessage().' (remove or inspect provisioning tenant and database before retrying)');
+            // Database driver errors can contain connection details; do not echo
+            // raw exception messages into terminal transcripts or CI logs.
+            $this->error('Provisioning failed. Inspect protected application logs and the provisioning tenant/database before retrying.');
             return self::FAILURE;
         }finally{$connector->disconnect();}
     }
