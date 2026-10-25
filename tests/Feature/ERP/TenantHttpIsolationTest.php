@@ -266,6 +266,17 @@ final class TenantHttpIsolationTest extends TestCase
             $this->assertNull($secureCookies[0]->getDomain());
             $this->flushSession();
 
+            // Exception responses must not leak a tenant connection or
+            // tenant context into the next request in the same process.
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->getJson('http://tenant-a.erp.test/erp/customers/data')
+                ->assertUnauthorized();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->getJson('http://tenant-b.erp.test/erp/customers/data')
+                ->assertUnauthorized();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+
             // Untrusted forwarded host headers cannot select another tenant.
             // The HTTP Host remains authoritative without a trusted proxy.
             $this->withServerVariables([
