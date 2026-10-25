@@ -3,6 +3,7 @@ namespace App\Providers;
 
 use App\Http\Middleware\ResolveErpTenant;
 use App\Console\Commands\ProvisionErpTenant;
+use App\Console\Commands\AuditErpBranchMemberships;
 use App\Console\Commands\PromoteErpPlatformAdmin;
 use App\Console\Commands\CreateErpPlatformUser;
 use App\Models\ERP\Tenant\TenantUser;
@@ -25,7 +26,7 @@ final class ErpServiceProvider extends ServiceProvider
         // A separate guard prevents a platform user session from authorizing a tenant request.
         config(['auth.guards.erp_tenant' => ['driver' => 'session', 'provider' => 'erp_tenant_users'],
                 'auth.providers.erp_tenant_users' => ['driver' => 'eloquent', 'model' => TenantUser::class]]);
-        if ($this->app->runningInConsole()) $this->commands([ProvisionErpTenant::class, PromoteErpPlatformAdmin::class, CreateErpPlatformUser::class]);
+        if ($this->app->runningInConsole()) $this->commands([ProvisionErpTenant::class, AuditErpBranchMemberships::class, PromoteErpPlatformAdmin::class, CreateErpPlatformUser::class]);
         Route::aliasMiddleware('erp.tenant', ResolveErpTenant::class);
         // Long-lived queue workers must never retain tenant PDO connections,
         // authentication guards or tenant context between successive jobs.
