@@ -174,6 +174,18 @@ final class TenantHttpIsolationTest extends TestCase
                     'lines' => [['product_variant_id' => 1, 'quantity' => 1, 'unit_cost' => 1]],
                 ])->assertForbidden();
             $this->assertFalse(app()->bound('erp.current_tenant'));
+
+            // An existing invoice must be authorized using its stored
+            // warehouse, not a branch or warehouse ID supplied by the client.
+            $restrictedInvoiceId = $branchDb->table('sales_invoices')->insertGetId([
+                'warehouse_id' => $restrictedWarehouse,
+            ]);
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->postJson('http://tenant-a.erp.test/erp/sales/'.$restrictedInvoiceId.'/post')
+                ->assertForbidden();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            $this->assertSame($restrictedWarehouse, (int) $branchDb->table('sales_invoices')
+                ->where('id', $restrictedInvoiceId)->value('warehouse_id'));
             $this->flushSession();
             foreach ([$stockPermissionId, $salesPermissionId, $postPermissionId] as $newPermissionId) {
                 $branchDb->table('permission_role')->where('permission_id', $newPermissionId)->delete();
