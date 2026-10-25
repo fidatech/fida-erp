@@ -291,6 +291,19 @@ final class TenantHttpIsolationTest extends TestCase
                 $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
                     ->getJson('http://tenant-a.erp.test/erp/customers/data')->assertForbidden();
                 $this->assertFalse(app()->bound('erp.current_tenant'));
+
+                // A's revoked permission must not alter B's independent
+                // role-permission tables or authorization decisions.
+                $this->assertSame(1, DB::connection('fixture_B')->table('permission_role')
+                    ->join('permissions', 'permissions.id', '=', 'permission_role.permission_id')
+                    ->where('permissions.name', 'customers.manage')->count());
+                $this->flushSession();
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                    ->post('http://tenant-b.erp.test/erp/login', [
+                        'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                    ])->assertRedirect();
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                    ->getJson('http://tenant-b.erp.test/erp/customers/data')->assertOk();
             } finally {
                 $roleId = DB::connection('fixture_A')->table('roles')
                     ->where('name', 'Customer manager')->value('id');
