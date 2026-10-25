@@ -192,6 +192,26 @@ final class TenantHttpIsolationTest extends TestCase
             }
             $this->flushSession();
 
+            // Revoking a user must invalidate an already authenticated
+            // session without requiring the user to log out manually.
+            $this->flushSession();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->post('http://tenant-a.erp.test/erp/login', [
+                    'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                ])->assertRedirect();
+            DB::connection('fixture_A')->table('users')
+                ->where('email', 'owner@example.test')->update(['active' => 0]);
+            try {
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->getJson('http://tenant-a.erp.test/erp/customers/data')
+                    ->assertUnauthorized();
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            } finally {
+                DB::connection('fixture_A')->table('users')
+                    ->where('email', 'owner@example.test')->update(['active' => 1]);
+            }
+            $this->flushSession();
+
             // The central SaaS platform uses the web guard, never the
             // tenant guard. A tenant login cannot authenticate platform APIs.
             config(['erp.platform_host' => 'platform.erp.test']);
