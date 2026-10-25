@@ -42,7 +42,10 @@ jobs:
         run: |
           php -l tests/Feature/ERP/TenantSecurityBaselineTest.php
           php -l tests/Feature/ERP/TenantIsolationIntegrationTest.php
+          php -l tests/Feature/ERP/ResponsiveUiContractTest.php
       - name: Execute baseline security tests
         run: php artisan test --filter TenantSecurityBaselineTest --stop-on-failure
+      - name: Check responsive UI contracts
+        run: php artisan test --filter ResponsiveUiContractTest --stop-on-failure
       - name: Report integration gate
         run: echo 'MySQL two-tenant integration test remains INCOMPLETE and is not claimed as passed.'
