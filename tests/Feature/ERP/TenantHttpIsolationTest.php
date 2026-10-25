@@ -260,6 +260,24 @@ final class TenantHttpIsolationTest extends TestCase
                         'warehouse_id' => $allowedWarehouse,
                     ])->assertForbidden();
                 $this->assertFalse(app()->bound('erp.current_tenant'));
+
+                // A crafted sale draft must not bypass branch membership.
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->postJson('http://tenant-a.erp.test/erp/sales', [
+                        'warehouse_id' => $allowedWarehouse,
+                    ])->assertForbidden();
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+
+                // The creation and stock screens must not expose the revoked
+                // warehouse as a selectable option or an inventory location.
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->get('http://tenant-a.erp.test/erp/sales/create')
+                    ->assertOk()->assertDontSee('Allowed warehouse');
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->get('http://tenant-a.erp.test/erp/stock')
+                    ->assertOk()->assertDontSee('Allowed warehouse');
+                $this->assertFalse(app()->bound('erp.current_tenant'));
             } finally {
                 $branchDb->table('branch_user')->insert([
                     'branch_id' => $allowedBranchId,
