@@ -107,8 +107,6 @@ final class TenantHttpIsolationTest extends TestCase
                     ['branch_id' => $branchId, 'code' => 'ALLOWED', 'name' => 'Allowed warehouse'],
                     ['branch_id' => $otherBranchId, 'code' => 'RESTRICTED', 'name' => 'Restricted warehouse'],
                 ]);
-                $connectorForBranches = app(\App\Services\ERP\TenantConnector::class);
-                // The relationship is exercised after central tenant creation below.
                 $tenants[] = Tenant::create([
                     'business_name' => 'Test '.$suffix, 'slug' => 'ci-'.strtolower($suffix),
                     'domain' => 'tenant-'.strtolower($suffix).'.erp.test',
@@ -117,6 +115,25 @@ final class TenantHttpIsolationTest extends TestCase
                     'database_password' => getenv("ERP_TEST_TENANT_{$suffix}_PASSWORD"),
                     'status' => 'active',
                 ]);
+            }
+
+            // Branch membership must allow assigned active branches only.
+            $branchConnector = app(\App\Services\ERP\TenantConnector::class);
+            foreach ($tenants as $tenant) {
+                $branchConnector->connect($tenant);
+                try {
+                    $user = \App\Models\ERP\Tenant\TenantUser::query()
+                        ->where('email', 'owner@example.test')->firstOrFail();
+                    $allowed = DB::connection('erp_tenant')->table('branches')->where('code', 'MAIN')->value('id');
+                    $restricted = DB::connection('erp_tenant')->table('branches')->where('code', 'OTHER')->value('id');
+                    $this->assertTrue($user->canAccessBranch((int) $allowed));
+                    $this->assertFalse($user->canAccessBranch((int) $restricted));
+                    DB::connection('erp_tenant')->table('branches')->where('id', $allowed)->update(['active' => 0]);
+                    $this->assertFalse($user->canAccessBranch((int) $allowed));
+                    DB::connection('erp_tenant')->table('branches')->where('id', $allowed)->update(['active' => 1]);
+                } finally {
+                    $branchConnector->disconnect();
+                }
             }
 
             // Prove the tenant connection selects only its own customer records.
