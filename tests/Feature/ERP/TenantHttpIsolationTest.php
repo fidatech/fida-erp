@@ -314,12 +314,14 @@ final class TenantHttpIsolationTest extends TestCase
                 Tenant::query()->whereKey($tenants[1]->getKey())->firstOrFail()->suspended_at,
                 'Central database must persist the tenant suspension before HTTP checks.'
             );
+            // Check the public route first to distinguish tenant resolution
+            // failure from authentication middleware ordering on protected APIs.
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->get('http://tenant-b.erp.test/erp/login')->assertNotFound();
             $suspendedApi = $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
                 ->getJson('http://tenant-b.erp.test/erp/customers/data');
             $suspendedApi->assertNotFound();
             $this->assertFalse(app()->bound('erp.current_tenant'));
-            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
-                ->get('http://tenant-b.erp.test/erp/login')->assertNotFound();
 
             // Restoring an unsuspended tenant must restore hostname
             // resolution without granting anonymous access to its data.
