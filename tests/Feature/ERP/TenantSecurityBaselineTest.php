@@ -381,10 +381,13 @@ final class TenantSecurityBaselineTest extends TestCase
     public function test_platform_login_is_rate_limited_and_tenant_login_is_rate_limited(): void
     {
         $routes = app('router')->getRoutes();
-        foreach (['erp.login.submit', 'erp.platform.login.submit'] as $name) {
+        foreach ([
+            'erp.login.submit' => 'throttle:erp-tenant-login',
+            'erp.platform.login.submit' => 'throttle:erp-platform-login',
+        ] as $name => $throttle) {
             $route = $routes->getByName($name);
             $this->assertNotNull($route, "Missing route {$name}");
-            $this->assertContains('throttle:6,1', $route->gatherMiddleware());
+            $this->assertContains($throttle, $route->gatherMiddleware());
         }
     }
 
