@@ -216,6 +216,24 @@ final class TenantHttpIsolationTest extends TestCase
             $createPage->assertOk()->assertSee('Allowed warehouse')
                 ->assertDontSee('Restricted warehouse');
             $this->assertFalse(app()->bound('erp.current_tenant'));
+
+            // Deactivating an assigned branch must immediately revoke invoice
+            // visibility and posting access without requiring a new login.
+            $allowedBranchId = $branchDb->table('warehouses')->where('id', $allowedWarehouse)->value('branch_id');
+            $branchDb->table('branches')->where('id', $allowedBranchId)->update(['active' => 0]);
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->get('http://tenant-a.erp.test/erp/sales')
+                ->assertOk()->assertDontSee('ALLOWED-INVOICE');
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->postJson('http://tenant-a.erp.test/erp/sales/'.$allowedInvoiceId.'/post')
+                ->assertForbidden();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->get('http://tenant-a.erp.test/erp/sales/'.$allowedInvoiceId.'/pdf')
+                ->assertNotFound();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            $branchDb->table('branches')->where('id', $allowedBranchId)->update(['active' => 1]);
             $this->flushSession();
             foreach ([$stockPermissionId, $salesPermissionId, $postPermissionId] as $newPermissionId) {
                 $branchDb->table('permission_role')->where('permission_id', $newPermissionId)->delete();
