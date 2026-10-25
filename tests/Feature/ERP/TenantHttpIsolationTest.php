@@ -46,6 +46,11 @@ final class TenantHttpIsolationTest extends TestCase
         ]);
         DB::purge('mysql');
 
+        // Production HTTPS must explicitly emit Secure session cookies.
+        // HTTP-only fixture requests below intentionally exercise a separate
+        // cookie configuration and must not be mistaken for HTTPS coverage.
+        $this->assertNull(config('session.domain'));
+
         // Host-only cookies prevent sibling tenant subdomains from
         // automatically receiving the same browser session cookie.
         $this->assertNull(config('session.domain'));
@@ -206,6 +211,29 @@ final class TenantHttpIsolationTest extends TestCase
             $this->withServerVariables(['HTTP_HOST' => 'platform.erp.test'])
                 ->get('http://platform.erp.test/erp/login')
                 ->assertNotFound();
+            $this->flushSession();
+
+            // A real HTTPS request must receive a Secure session cookie.
+            config(['session.secure' => true]);
+            $this->flushSession();
+            $httpsHost = 'tenant-a.erp.test';
+            $secureLogin = $this->withServerVariables([
+                'HTTP_HOST' => $httpsHost,
+                'HTTPS' => 'on',
+                'SERVER_PORT' => '443',
+            ])->post('https://'.$httpsHost.'/erp/login', [
+                'email' => 'owner@example.test',
+                'password' => 'TestPassword123!',
+            ]);
+            $secureLogin->assertRedirect();
+            $secureCookies = array_values(array_filter(
+                $secureLogin->headers->getCookies(),
+                fn ($cookie) => $cookie->getName() === config('session.cookie')
+            ));
+            $this->assertCount(1, $secureCookies);
+            $this->assertTrue($secureCookies[0]->isSecure());
+            $this->assertTrue($secureCookies[0]->isHttpOnly());
+            $this->assertNull($secureCookies[0]->getDomain());
             $this->flushSession();
 
             $this->withServerVariables(['HTTP_HOST' => 'unknown.erp.test'])
