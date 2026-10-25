@@ -192,6 +192,11 @@ final class TenantHttpIsolationTest extends TestCase
             }
             $this->flushSession();
 
+            // Earlier fixture logins can exhaust the shared throttle bucket.
+            // Keep authentication and tenant middleware enabled while
+            // excluding rate limiting from the remaining isolation cases.
+            $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
             // Revoking a user must invalidate an already authenticated
             // session without requiring the user to log out manually.
             $this->flushSession();
