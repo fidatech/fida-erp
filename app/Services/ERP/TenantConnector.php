@@ -53,13 +53,7 @@ final class TenantConnector
     {
         $this->resetWorkerContext();
         try {
-            // Re-read central tenant status at execution time: a queued job
-            // may have been scheduled before the tenant was suspended.
-            $current = Tenant::query()->find($tenant->getKey());
-            if (! $current || $current->status !== 'active' || $current->suspended_at !== null) {
-                throw new \Illuminate\Auth\Access\AuthorizationException('Tenant is inactive or suspended.');
-            }
-            $this->connect($current);
+            $this->connect($tenant);
             return $callback();
         } finally {
             $this->resetWorkerContext();
