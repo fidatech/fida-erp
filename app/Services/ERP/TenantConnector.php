@@ -60,6 +60,24 @@ final class TenantConnector
         }
     }
 
+    /**
+     * Public entry point for tenant background work. Resolve the tenant from
+     * the central database at execution time, not from stale queued payloads.
+     */
+    public function withinActiveTenant(int $tenantId, callable $callback): mixed
+    {
+        $this->resetWorkerContext();
+        try {
+            $tenant = Tenant::query()->find($tenantId);
+            if (! $tenant || $tenant->status !== 'active' || $tenant->suspended_at !== null) {
+                throw new \Illuminate\Auth\Access\AuthorizationException('Tenant is inactive or suspended.');
+            }
+            return $this->withinTenant($tenant, $callback);
+        } finally {
+            $this->resetWorkerContext();
+        }
+    }
+
     public function disconnect(): void
     {
         try {
