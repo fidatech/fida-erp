@@ -114,6 +114,23 @@ final class TenantSecurityBaselineTest extends TestCase
         }
     }
 
+    public function test_platform_login_is_rate_limited_and_tenant_login_is_rate_limited(): void
+    {
+        $routes = app('router')->getRoutes();
+        foreach (['erp.login.submit', 'erp.platform.login.submit'] as $name) {
+            $route = $routes->getByName($name);
+            $this->assertNotNull($route, "Missing route {$name}");
+            $this->assertContains('throttle:6,1', $route->gatherMiddleware());
+        }
+    }
+
+    public function test_session_security_defaults_prevent_shared_subdomain_cookies(): void
+    {
+        $this->assertNull(config('session.domain'));
+        $this->assertTrue(config('session.http_only'));
+        $this->assertSame('lax', strtolower((string) config('session.same_site')));
+    }
+
     public function test_tenant_routes_require_tenant_resolution_middleware(): void
     {
         $routes = app('router')->getRoutes();
