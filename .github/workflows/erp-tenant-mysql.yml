@@ -140,6 +140,14 @@ jobs:
               code VARCHAR(40), name VARCHAR(255)
             );
             CREATE TABLE erp_test_b.warehouses LIKE erp_test_a.warehouses;
+            CREATE TABLE erp_test_a.product_variants (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
+            );
+            CREATE TABLE erp_test_b.product_variants LIKE erp_test_a.product_variants;
+            CREATE TABLE erp_test_a.suppliers (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
+            );
+            CREATE TABLE erp_test_b.suppliers LIKE erp_test_a.suppliers;
           "
       - name: Lint tenant middleware and integration tests
         run: |
