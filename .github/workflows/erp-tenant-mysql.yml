@@ -145,7 +145,8 @@ jobs:
             );
             CREATE TABLE erp_test_b.product_variants LIKE erp_test_a.product_variants;
             CREATE TABLE erp_test_a.suppliers (
-              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              name VARCHAR(190) NOT NULL DEFAULT 'CI Supplier'
             );
             CREATE TABLE erp_test_b.suppliers LIKE erp_test_a.suppliers;
             CREATE TABLE erp_test_a.sales_invoices (
