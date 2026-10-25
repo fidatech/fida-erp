@@ -13,7 +13,7 @@ Phases 2.34–2.46 covered tenant host resolution, proxy boundaries, session sco
 - Verify no customer data, credentials, or secrets are exposed in logs or artifacts.
 
 ## Known risks and follow-ups
-1. **Legacy branch membership migration:** existing users without `branch_user` rows will lose warehouse access by design. Provide explicit authorized administrator assignment/onboarding; do not auto-grant all users access.
+1. **Legacy branch membership migration:** newly provisioned owners are now explicitly assigned to the created HQ branch (commit `00c75eb`); existing users without `branch_user` rows will still lose warehouse access by design. Provide explicit authorized administrator assignment/onboarding; do not auto-grant all users access.
 2. **Multi-company support:** current branch isolation does not implement independent legal-company boundaries within a single tenant.
 3. **Tenant provisioning:** database creation, credential rotation, backup/restore, and rollback require operational staging validation.
 4. **Login throttling:** account/IP limits require a durable, shared cache backend in multi-server production; validate reverse-proxy IP trust.
@@ -24,3 +24,9 @@ Phases 2.34–2.46 covered tenant host resolution, proxy boundaries, session sco
 
 ## Release decision
 **HOLD** until latest CI is green, staging acceptance is documented, legacy branch membership access is resolved, and the owner explicitly authorizes merge/deployment. Never deploy from this review automatically.
+
+## Phase 2.53 development checkpoint
+- CI passed for commit `5abd065` (both security and disposable MySQL workflows).
+- Later commits added lifecycle flag checks, safe environment contract tests, tenant owner HQ membership assignment and MySQL workflow triggers. **Check CI on the final head before considering the automated gate complete.**
+- The tenant owner provisioning regression test currently checks the command's source contract; it does **not** substitute for an end-to-end tenant provisioning smoke test on a disposable MySQL database.
+- Development hardening can be considered implemented, but staging acceptance, legacy tenant branch migration, backup restore and production configuration remain release blockers.
