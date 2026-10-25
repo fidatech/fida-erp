@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\ERP;
 use App\Http\Controllers\Controller;
+use App\Services\ERP\BranchWarehouseAccess;
 use App\Services\ERP\GoodsReceiptService;
 use App\Services\ERP\SettlementService;
 use Illuminate\Http\Request;
@@ -9,9 +10,14 @@ use Illuminate\Support\Str;
 use DomainException;
 final class StockController extends Controller
 {
+    private function allowedWarehouseIds(): array
+    {
+        return app(BranchWarehouseAccess::class)->allowedWarehouseIds();
+    }
+
  public function index(){
   $db=DB::connection('erp_tenant');
-  return view('erp.stock.index',['warehouses'=>$db->table('warehouses')->get(),'currencies'=>$db->table('currencies')->where('active',1)->get(),
+  return view('erp.stock.index',['warehouses'=>$db->table('warehouses')->whereIn('id',$this->allowedWarehouseIds())->get(),'currencies'=>$db->table('currencies')->where('active',1)->get(),
       'suppliers'=>$db->table('suppliers')->select('id','name')->orderBy('name')->limit(200)->get(),
       'base'=>$db->table('company_settings')->value('base_currency'),
       'receipts'=>$db->table('goods_receipts as g')->join('suppliers as su','su.id','=','g.supplier_id')
@@ -33,6 +39,9 @@ final class StockController extends Controller
   return back()->with('success','Supplier payment #'.$payment.' posted');
  }
  public function receive(Request $request,GoodsReceiptService $service){
+  $warehouseId=$request->input('warehouse_id');
+  abort_unless(is_scalar($warehouseId) && ctype_digit((string)$warehouseId)
+   && app(BranchWarehouseAccess::class)->allows((int)$warehouseId),403);
   $data=$request->validate(['request_key'=>'required|uuid', 'supplier_id'=>'required|integer|exists:erp_tenant.suppliers,id',
     'warehouse_id'=>'required|integer|exists:erp_tenant.warehouses,id','currency_code'=>'required|string|size:3',
     'fx_rate'=>'required|numeric|gt:0','lines'=>'required|array|min:1|max:100',

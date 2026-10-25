@@ -13,7 +13,7 @@ Route::middleware('web')->group(function(){
 });
 Route::middleware('web')->prefix('platform/erp')->name('erp.platform.')->group(function(){
  Route::get('login',[PlatformAuthController::class,'show'])->name('login');
- Route::post('login',[PlatformAuthController::class,'login'])->middleware('throttle:6,1')->name('login.submit');
+ Route::post('login',[PlatformAuthController::class,'login'])->middleware('throttle:erp-platform-login')->name('login.submit');
 });
 Route::middleware(['web','auth:web',ErpPlatformAdmin::class])->prefix('platform/erp')->name('erp.platform.')->group(function(){
  Route::get('/',[PlatformController::class,'index'])->name('index');

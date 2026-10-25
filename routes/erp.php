@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web','erp.tenant'])->prefix('erp')->name('erp.')->group(function(){
     Route::get('login',[AuthController::class,'show'])->name('login');
-    Route::post('login',[AuthController::class,'login'])->middleware('throttle:6,1')->name('login.submit');
+    Route::post('login',[AuthController::class,'login'])->middleware('throttle:erp-tenant-login')->name('login.submit');
     Route::middleware(['auth:erp_tenant',ErpLocale::class])->group(function(){
         Route::post('logout',[AuthController::class,'logout'])->name('logout');
         Route::post('quick-create/warehouse',[\App\Http\Controllers\ERP\QuickCreateController::class,'warehouse'])->middleware(ErpPermission::class.':settings.manage')->name('quick.warehouse');

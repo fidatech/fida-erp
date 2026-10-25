@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\ERP;
 use App\Http\Controllers\Controller;
+use App\Services\ERP\BranchWarehouseAccess;
 use App\Services\ERP\SaleService;
 use App\Services\ERP\SettlementService;
 use Illuminate\Http\Request;
@@ -47,6 +48,7 @@ final class SalesController extends Controller
         'currencies'=>DB::connection('erp_tenant')->table('currencies')->where('active',1)->get(),
         'base'=>DB::connection('erp_tenant')->table('company_settings')->value('base_currency')]);}
     public function store(Request $request,SaleService $service){
+        $this->authorizeRequestedWarehouse($request);
         $input=$request->validate(['request_key'=>'required|uuid', 'customer_id'=>'required|integer|exists:erp_tenant.customers,id',
             'warehouse_id'=>'required|integer|exists:erp_tenant.warehouses,id', 'currency_code'=>'required|string|size:3',
             'fx_rate'=>'required|numeric|gt:0','discount'=>'nullable|numeric|min:0',
@@ -63,6 +65,8 @@ final class SalesController extends Controller
         return back()->with('success','Customer payment #'.$paymentId.' posted');
     }
     public function post(int $id,SaleService $service){
+        $warehouseId = DB::connection('erp_tenant')->table('sales_invoices')->where('id', $id)->value('warehouse_id');
+        abort_unless($warehouseId && app(BranchWarehouseAccess::class)->allows((int) $warehouseId), 403);
         try{$service->post($id);}catch(DomainException|\InvalidArgumentException $e){return back()->withErrors(['sale'=>$e->getMessage()]);}
         return redirect()->route('erp.sales.index',['pay'=>$id])->with('success',__('erp::ui.invoice_posted'));
     }

@@ -1,0 +1,11 @@
+@media (max-width:600px) {
+  .fida-table.erp-responsive-list, .erp-table.erp-responsive-list { display:block; width:100%; min-width:0; }
+  .erp-responsive-list thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .erp-responsive-list tbody { display:grid; gap:12px; }
+  .erp-responsive-list tbody tr { display:block; border:1px solid #e2e8ef; border-radius:10px; padding:10px; background:#fff; }
+  .erp-responsive-list tbody td { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; width:100%; white-space:normal; overflow-wrap:anywhere; border:0; padding:7px 4px; text-align:end; }
+  .erp-responsive-list tbody td::before { content:attr(data-label); font-weight:650; color:#53667e; text-align:start; flex:0 0 42%; }
+  .erp-responsive-list tbody td.erp-empty-state { display:block; text-align:center; }
+  .erp-responsive-list tbody td.erp-empty-state::before { content:none; }
+  .fida-table-wrap, .erp-table-scroll { max-width:100%; overflow-x:visible; }
+}

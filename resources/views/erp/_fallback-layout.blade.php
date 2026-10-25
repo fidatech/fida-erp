@@ -60,6 +60,7 @@ $rtl=in_array(app()->getLocale(),['fa','ps'],true);
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>@yield('title', 'Workspace') | FidaERP</title>
 <link rel="stylesheet" href="{{ asset('fida-erp/erp.css') }}">
+<link rel="stylesheet" href="{{ asset('fida-erp/mobile-cards.css') }}">
 <link rel="stylesheet" href="{{ asset('fida-erp/reference-ui.css') }}">
 <link rel="stylesheet" href="{{ asset('fida-erp/vendor/select2.min.css') }}">
 @yield('head')
@@ -137,6 +138,7 @@ $rtl=in_array(app()->getLocale(),['fa','ps'],true);
 <script src="{{ asset('fida-erp/vendor/jquery.min.js') }}"></script>
 <script src="{{ asset('fida-erp/vendor/select2.min.js') }}"></script>
 <script src="{{ asset('fida-erp/ui-shell.js') }}" defer></script>
+<script src="{{ asset('fida-erp/responsive-tables.js') }}" defer></script>
 <script>document.addEventListener('DOMContentLoaded',()=>{if(!window.jQuery?.fn?.select2)return;window.jQuery('select').not('#customer,.item-lookup,.select2-hidden-accessible').select2({width:'100%',minimumResultsForSearch:0});});</script>
 <style>.select2-container .select2-selection--single{height:36px;border:1px solid #d4deeb;border-radius:5px}.select2-container--default .select2-selection--single .select2-selection__rendered{line-height:34px;color:#17355b}.select2-container--default .select2-selection--single .select2-selection__arrow{height:34px}.select2-container{max-width:100%}</style>
 <script>
