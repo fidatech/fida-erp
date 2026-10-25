@@ -26,7 +26,17 @@ final class TenantConnector
 
     public function disconnect(): void
     {
-        DB::disconnect('erp_tenant'); DB::purge('erp_tenant');
-        app()->forgetInstance('erp.current_tenant');
+        try {
+            DB::disconnect('erp_tenant');
+        } finally {
+            // Purge even if disconnect throws, so a reused worker never
+            // retains the previous tenant's configured credentials.
+            try {
+                DB::purge('erp_tenant');
+            } finally {
+                config()->offsetUnset('database.connections.erp_tenant');
+                app()->forgetInstance('erp.current_tenant');
+            }
+        }
     }
 }
