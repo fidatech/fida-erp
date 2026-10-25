@@ -191,7 +191,7 @@ final class TenantSecurityBaselineTest extends TestCase
         config(['database.connections.mysql' => ['driver' => 'sqlite']]);
         try {
             $this->expectException(\InvalidArgumentException::class);
-            $this->expectExceptionMessage('Invalid tenant database');
+            $this->expectExceptionMessage('MySQL central connection required');
             app(TenantConnector::class)->connect($tenant);
         } finally {
             config(['database.connections.mysql' => $original]);
