@@ -8,6 +8,26 @@ use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
 {
+    public function test_tenant_disconnect_is_idempotent_across_worker_job_boundaries(): void
+    {
+        $connector = app(TenantConnector::class);
+
+        foreach ([1, 2, 3] as $jobNumber) {
+            app()->instance('erp.current_tenant', (object) ['job' => $jobNumber]);
+            $this->assertTrue(app()->bound('erp.current_tenant'));
+            $connector->disconnect();
+            $this->assertFalse(
+                app()->bound('erp.current_tenant'),
+                "Tenant context leaked after simulated job {$jobNumber}."
+            );
+        }
+
+        // Repeated cleanup must also be safe after a failed job has
+        // already disconnected its tenant connection.
+        $connector->disconnect();
+        $this->assertFalse(app()->bound('erp.current_tenant'));
+    }
+
     public function test_tenant_auth_guard_is_registered_separately_from_platform_guard(): void
     {
         $this->assertSame('session', config('auth.guards.erp_tenant.driver'));
