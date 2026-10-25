@@ -273,6 +273,24 @@ final class TenantHttpIsolationTest extends TestCase
             // excluding rate limiting from the remaining isolation cases.
             $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
 
+            // A role with customers.manage must not inherit unrelated
+            // product, stock, sales or sales-post privileges.
+            $this->flushSession();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->post('http://tenant-a.erp.test/erp/login', [
+                    'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                ])->assertRedirect();
+            foreach ([
+                '/erp/products/data',
+                '/erp/stock',
+                '/erp/sales',
+            ] as $restrictedPath) {
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->getJson('http://tenant-a.erp.test'.$restrictedPath)->assertForbidden();
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            }
+            $this->flushSession();
+
             // Permission revocation must take effect for an existing session
             // without relying on logout or stale cached role assignments.
             $this->flushSession();
