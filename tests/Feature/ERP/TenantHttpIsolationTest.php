@@ -112,6 +112,8 @@ final class TenantHttpIsolationTest extends TestCase
                 } finally {
                     $connector->disconnect();
                 }
+                $this->assertNull(config('database.connections.erp_tenant'));
+                $this->assertFalse(app()->bound('erp.current_tenant'));
             }
 
             foreach (['A', 'B'] as $suffix) {
