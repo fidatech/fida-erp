@@ -311,6 +311,16 @@ final class TenantHttpIsolationTest extends TestCase
             $this->assertFalse(app()->bound('erp.current_tenant'));
             $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
                 ->get('http://tenant-b.erp.test/erp/login')->assertNotFound();
+
+            // Restoring an unsuspended tenant must restore hostname
+            // resolution without granting anonymous access to its data.
+            $tenants[1]->update(['suspended_at' => null]);
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->get('http://tenant-b.erp.test/erp/login')->assertOk();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->getJson('http://tenant-b.erp.test/erp/customers/data')
+                ->assertUnauthorized();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
         } finally {
             foreach (['A', 'B'] as $suffix) {
                 $connection = 'fixture_'.$suffix;
