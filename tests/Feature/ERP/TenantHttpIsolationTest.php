@@ -120,6 +120,16 @@ final class TenantHttpIsolationTest extends TestCase
                     ]);
                 $response->assertRedirect();
                 $this->assertStringContainsString('/erp', $response->headers->get('Location', ''));
+                // Inspect the actual Set-Cookie response header, not just
+                // Laravel's session configuration values.
+                $sessionCookies = array_values(array_filter(
+                    $response->headers->getCookies(),
+                    fn ($cookie) => $cookie->getName() === config('session.cookie')
+                ));
+                $this->assertCount(1, $sessionCookies);
+                $this->assertNull($sessionCookies[0]->getDomain());
+                $this->assertTrue($sessionCookies[0]->isHttpOnly());
+                $this->assertSame('lax', strtolower((string) $sessionCookies[0]->getSameSite()));
                 $this->assertFalse(app()->bound('erp.current_tenant'));
             }
 
