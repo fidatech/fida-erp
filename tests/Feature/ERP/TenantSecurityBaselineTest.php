@@ -53,6 +53,28 @@ final class TenantSecurityBaselineTest extends TestCase
         $this->assertFalse(app()->bound('erp.current_tenant'));
     }
 
+    public function test_scoped_background_execution_cleans_up_after_callback_exception(): void
+    {
+        $tenant = new Tenant();
+        $tenant->database_name = 'valid_tenant';
+        $tenant->database_username = 'valid_user';
+        $tenant->database_password = 'temporary_secret';
+
+        try {
+            app(TenantConnector::class)->withinTenant($tenant, function (): void {
+                $this->assertTrue(app()->bound('erp.current_tenant'));
+                $this->assertSame('valid_tenant', config('database.connections.erp_tenant.database'));
+                throw new \RuntimeException('Simulated scheduled task failure');
+            });
+            $this->fail('Expected scheduled task exception.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Simulated scheduled task failure', $e->getMessage());
+        }
+
+        $this->assertFalse(app()->bound('erp.current_tenant'));
+        $this->assertNull(config('database.connections.erp_tenant'));
+    }
+
     public function test_scoped_background_execution_cleans_up_when_tenant_is_invalid(): void
     {
         $tenant = new Tenant();
