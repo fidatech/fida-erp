@@ -42,6 +42,10 @@ final class TenantMysqlConnectionTest extends TestCase
         config(['database.connections.mysql' => $mysql]);
         DB::purge('mysql');
 
+        // Even if central config carries a URL DSN, tenant credentials and
+        // database must be resolved from the tenant record, not that URL.
+        config(['database.connections.mysql.url' =>
+            'mysql://central_wrong:central_wrong@127.0.0.1:3306/erp_test_central']);
         $connector = app(TenantConnector::class);
         try {
             foreach (['A', 'B'] as $suffix) {
@@ -50,6 +54,9 @@ final class TenantMysqlConnectionTest extends TestCase
                 $tenant->database_username = (string) getenv("ERP_TEST_TENANT_{$suffix}_USER");
                 $tenant->database_password = (string) getenv("ERP_TEST_TENANT_{$suffix}_PASSWORD");
                 $connector->connect($tenant);
+                $this->assertArrayNotHasKey('url', config('database.connections.erp_tenant'));
+                $this->assertSame($tenant->database_name, config('database.connections.erp_tenant.database'));
+                $this->assertSame($tenant->database_username, config('database.connections.erp_tenant.username'));
 
                 $actual = DB::connection('erp_tenant')->selectOne('SELECT DATABASE() AS db')->db;
                 $this->assertSame($tenant->database_name, $actual);
