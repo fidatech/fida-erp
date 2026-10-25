@@ -40,7 +40,9 @@ final class TenantConnector
             try {
                 DB::purge('erp_tenant');
             } finally {
-                config()->offsetUnset('database.connections.erp_tenant');
+                // Keep the connection definition available until Laravel has
+                // finished the request/session lifecycle; purge removes the
+                // active PDO connection and prevents cross-tenant reuse.
                 app()->forgetInstance('erp.current_tenant');
             }
         }
