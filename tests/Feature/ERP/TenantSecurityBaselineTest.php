@@ -8,6 +8,34 @@ use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
 {
+    public function test_queue_completion_and_failure_both_scrub_tenant_credentials(): void
+    {
+        $job = new \Illuminate\Queue\Jobs\SyncJob(
+            app(), '{"uuid":"cleanup-events","displayName":"cleanup-events","job":"cleanup-events","data":{}}', 'sync', 'default'
+        );
+
+        foreach (['processed', 'failed'] as $outcome) {
+            config(['database.connections.erp_tenant' => [
+                'driver' => 'mysql', 'database' => 'previous_tenant',
+                'username' => 'previous_user', 'password' => 'sensitive_secret',
+            ]]);
+            app()->instance('erp.current_tenant', new \stdClass());
+
+            $event = $outcome === 'processed'
+                ? new \Illuminate\Queue\Events\JobProcessed('sync', $job)
+                : new \Illuminate\Queue\Events\JobFailed(
+                    'sync', $job, new \RuntimeException('Simulated failure')
+                );
+            app('events')->dispatch($event);
+
+            $this->assertNull(
+                config('database.connections.erp_tenant'),
+                "Tenant credentials persisted after {$outcome} event."
+            );
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+        }
+    }
+
     public function test_queue_before_event_removes_stale_database_credentials(): void
     {
         config(['database.connections.erp_tenant' => [
