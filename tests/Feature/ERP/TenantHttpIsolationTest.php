@@ -141,6 +141,42 @@ final class TenantHttpIsolationTest extends TestCase
                 $tenants[0]->update(['suspended_at' => null]);
             }
 
+            // Re-activated tenants can resume scheduled work; inactive
+            // tenants and unknown IDs must never run callbacks.
+            $resumed = $connector->withinActiveTenant((int) $tenants[0]->getKey(), function (): string {
+                return (string) DB::connection('erp_tenant')->table('customers')->value('code');
+            });
+            $this->assertSame('ONLY_A', $resumed);
+
+            $tenants[0]->update(['status' => 'inactive']);
+            try {
+                $executed = false;
+                try {
+                    $connector->withinActiveTenant((int) $tenants[0]->getKey(), function () use (&$executed): void {
+                        $executed = true;
+                    });
+                    $this->fail('Inactive tenant executed scheduled work.');
+                } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                    $this->assertSame('Tenant is inactive or suspended.', $e->getMessage());
+                }
+                $this->assertFalse($executed);
+                $this->assertNull(config('database.connections.erp_tenant'));
+            } finally {
+                $tenants[0]->update(['status' => 'active']);
+            }
+
+            $unknownExecuted = false;
+            try {
+                $connector->withinActiveTenant(2147483647, function () use (&$unknownExecuted): void {
+                    $unknownExecuted = true;
+                });
+                $this->fail('Unknown tenant executed scheduled work.');
+            } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+                $this->assertSame('Tenant is inactive or suspended.', $e->getMessage());
+            }
+            $this->assertFalse($unknownExecuted);
+            $this->assertNull(config('database.connections.erp_tenant'));
+
             // Scheduled/background scopes must execute real SQL against
             // only their selected tenant and release credentials afterward.
             foreach (['A', 'B', 'A'] as $suffix) {
