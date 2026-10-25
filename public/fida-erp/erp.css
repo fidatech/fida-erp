@@ -70,3 +70,24 @@ html,body{max-width:100%;min-width:0}
 @media (prefers-reduced-motion:reduce){
  .erp-sidebar,.erp-mobile-overlay{transition:none}
 }
+
+
+/* Mobile line editors: stacked fields preserve usable touch targets. */
+@media (max-width:600px){
+ .erp-table-scroll:has(#invoice-lines),.erp-table-scroll:has(#receipt-lines){overflow:visible}
+ .erp-table:has(#invoice-lines),.erp-table:has(#receipt-lines){display:block;min-width:0;width:100%}
+ .erp-table:has(#invoice-lines)>thead,.erp-table:has(#receipt-lines)>thead{display:none}
+ #invoice-lines,#receipt-lines{display:grid;gap:12px;width:100%}
+ #invoice-lines>tr,#receipt-lines>tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;border:1px solid var(--border);border-radius:10px;background:#fafbfd}
+ #invoice-lines>tr>td,#receipt-lines>tr>td{display:block;min-width:0;padding:0;border:0;white-space:normal}
+ #invoice-lines>tr>td:first-child,#receipt-lines>tr>td:first-child{grid-column:1/-1}
+ #invoice-lines>tr>td:last-child,#receipt-lines>tr>td:last-child{grid-column:1/-1;display:flex;justify-content:flex-end}
+ #invoice-lines>tr>td::before,#receipt-lines>tr>td::before{content:attr(data-label);display:block;font-size:12px;font-weight:650;color:#60748d;margin-bottom:5px}
+ #invoice-lines>tr>td:last-child::before,#receipt-lines>tr>td:last-child::before{display:none}
+ #invoice-lines .erp-field,#receipt-lines .erp-field,#invoice-lines .select2-container,#receipt-lines .select2-container{width:100%!important;min-width:0!important;max-width:100%}
+ #invoice-lines .remove,#receipt-lines .del{min-width:88px}
+}
+@media (max-width:360px){
+ #invoice-lines>tr,#receipt-lines>tr{grid-template-columns:minmax(0,1fr)}
+ #invoice-lines>tr>td,#receipt-lines>tr>td{grid-column:1/-1}
+}
