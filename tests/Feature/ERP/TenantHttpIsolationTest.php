@@ -131,6 +131,22 @@ final class TenantHttpIsolationTest extends TestCase
                 );
                 $this->assertFalse(app()->bound('erp.current_tenant'));
             }
+            // A suspended tenant must not be audited through a stale tenant
+            // connection; central lifecycle checks must fail closed.
+            $tenants[1]->update(['status' => 'suspended']);
+            try {
+                $this->assertSame(1, \Illuminate\Support\Facades\Artisan::call(
+                    'erp:audit-branch-memberships', ['tenant-id' => (int) $tenants[1]->getKey()]
+                ));
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            } finally {
+                $tenants[1]->update(['status' => 'active']);
+            }
+            $this->assertSame(1, \Illuminate\Support\Facades\Artisan::call(
+                'erp:audit-branch-memberships', ['tenant-id' => 0]
+            ));
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+
             $auditDb = DB::connection('fixture_A');
             $auditUserId = $auditDb->table('users')->where('email', 'owner@example.test')->value('id');
             $auditBranchId = $auditDb->table('branches')->where('code', 'MAIN')->value('id');
