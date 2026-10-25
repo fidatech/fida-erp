@@ -8,6 +8,19 @@ use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
 {
+    public function test_tenant_provisioning_assigns_owner_to_created_branch(): void
+    {
+        // Regression contract: a freshly provisioned tenant must not be
+        // locked out of warehouse workflows by an empty branch_user pivot.
+        $source = file_get_contents(app_path('Console/Commands/ProvisionErpTenant.php'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString("table('branches')->insertGetId", $source);
+        $this->assertStringContainsString("table('branch_user')->insert", $source);
+        $this->assertStringContainsString("'branch_id'=>\$headOfficeId", $source);
+        $this->assertStringContainsString("'user_id'=>\$id", $source);
+        $this->assertStringNotContainsString("'branch_id'=>1", $source);
+    }
+
     public function test_development_env_template_disables_debug_and_encrypts_sessions(): void
     {
         $template = file_get_contents(base_path('.env.example'));
