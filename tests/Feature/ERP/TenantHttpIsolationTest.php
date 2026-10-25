@@ -46,6 +46,12 @@ final class TenantHttpIsolationTest extends TestCase
         ]);
         DB::purge('mysql');
 
+        // Host-only cookies prevent sibling tenant subdomains from
+        // automatically receiving the same browser session cookie.
+        $this->assertNull(config('session.domain'));
+        $this->assertTrue(config('session.http_only'));
+        $this->assertSame('lax', config('session.same_site'));
+
         $tenants = [];
         try {
             foreach (['A', 'B'] as $suffix) {
