@@ -20,8 +20,14 @@ final class TenantConnector
             throw new InvalidArgumentException('MySQL central connection required');
         }
         config(['database.connections.erp_tenant' => array_replace($source,['database'=>$tenant->database_name,'username'=>$tenant->database_username,'password'=>$tenant->database_password])]);
-        DB::purge('erp_tenant');
-        app()->instance('erp.current_tenant',$tenant);
+        try {
+            DB::purge('erp_tenant');
+            app()->instance('erp.current_tenant', $tenant);
+        } catch (\Throwable $e) {
+            config()->offsetUnset('database.connections.erp_tenant');
+            app()->forgetInstance('erp.current_tenant');
+            throw $e;
+        }
     }
 
     public function disconnect(): void
