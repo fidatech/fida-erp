@@ -1,0 +1,261 @@
+name: FidaERP Disposable MySQL Integration
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/erp-tenant-mysql.yml'
+      - 'tests/Feature/ERP/**'
+      - 'app/Http/Middleware/ResolveErpTenant.php'
+      - 'app/Services/ERP/TenantConnector.php'
+      - 'app/Providers/ErpServiceProvider.php'
+      - 'database/migrations/erp_central/**'
+      - 'app/Http/Middleware/ErpPermission.php'
+      - 'app/Http/Controllers/ERP/SalesController.php'
+      - 'app/Http/Controllers/ERP/StockController.php'
+      - 'database/migrations/erp_tenant/**'
+      - 'app/Models/ERP/Tenant/**'
+      - 'routes/erp.php'
+      - 'routes/erp_platform.php'
+      - 'bootstrap/app.php'
+      - 'config/session.php'
+      - 'config/auth.php'
+      - 'app/Http/Middleware/ErpPlatformAdmin.php'
+      - 'app/Http/Controllers/ERP/AuthController.php'
+      - 'app/Http/Controllers/ERP/PlatformAuthController.php'
+      - 'app/Http/Controllers/ERP/PlatformController.php'
+      - 'app/Providers/AppServiceProvider.php'
+      - 'app/Console/Commands/ProvisionErpTenant.php'
+      - 'app/Console/Commands/AuditErpBranchMemberships.php'
+      - '.env.example'
+
+permissions:
+  contents: read
+
+jobs:
+  tenant-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-disposable-root-only
+          MYSQL_DATABASE: erp_test_central
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-disposable-root-only"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      APP_KEY: 'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      ERP_RUN_ISOLATION_TESTS: '1'
+      ERP_TEST_DB_HOST: 127.0.0.1
+      ERP_TEST_DB_PORT: '3306'
+      ERP_TEST_CENTRAL_DATABASE: erp_test_central
+      ERP_TEST_TENANT_A_DATABASE: erp_test_a
+      ERP_TEST_TENANT_B_DATABASE: erp_test_b
+      ERP_TEST_CENTRAL_USER: erp_test_central_user
+      ERP_TEST_CENTRAL_PASSWORD: ci-central-test-only
+      ERP_TEST_TENANT_A_USER: erp_test_a_user
+      ERP_TEST_TENANT_A_PASSWORD: ci-tenant-a-test-only
+      ERP_TEST_TENANT_B_USER: erp_test_b_user
+      ERP_TEST_TENANT_B_PASSWORD: ci-tenant-b-test-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql, pdo_sqlite, intl, gd, bcmath
+          coverage: none
+      - name: Install PHP dependencies with retry for transient GitHub rate limits
+        run: |
+          for attempt in 1 2 3; do
+            composer install --no-interaction --prefer-dist --no-progress && break
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 15))
+          done
+      - name: Provision disposable databases and isolated users
+        run: |
+          docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
+            CREATE DATABASE erp_test_a;
+            CREATE DATABASE erp_test_b;
+            CREATE TABLE erp_test_a.isolation_probe (id INT PRIMARY KEY);
+            CREATE TABLE erp_test_b.isolation_probe (id INT PRIMARY KEY);
+            CREATE USER 'erp_test_central_user'@'%' IDENTIFIED BY 'ci-central-test-only';
+            CREATE USER 'erp_test_a_user'@'%' IDENTIFIED BY 'ci-tenant-a-test-only';
+            CREATE USER 'erp_test_b_user'@'%' IDENTIFIED BY 'ci-tenant-b-test-only';
+            GRANT ALL PRIVILEGES ON erp_test_central.* TO 'erp_test_central_user'@'%';
+            GRANT ALL PRIVILEGES ON erp_test_a.* TO 'erp_test_a_user'@'%';
+            GRANT ALL PRIVILEGES ON erp_test_b.* TO 'erp_test_b_user'@'%';
+            FLUSH PRIVILEGES;"
+      - name: Confirm isolated MySQL connection
+        run: |
+          php -r '
+            $pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=erp_test_a", "erp_test_a_user", "ci-tenant-a-test-only");
+            echo "Disposable tenant A connection established\n";
+          '
+      - name: Prepare disposable Laravel authentication fixtures
+        run: |
+          docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
+            CREATE TABLE erp_test_central.erp_tenants (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              business_name VARCHAR(255) NOT NULL, slug VARCHAR(255) NOT NULL,
+              domain VARCHAR(255) NOT NULL, database_name VARCHAR(255) NOT NULL,
+              database_username VARCHAR(255) NOT NULL, database_password TEXT NOT NULL,
+              status VARCHAR(20) NOT NULL, suspended_at TIMESTAMP NULL,
+              trial_ends_at TIMESTAMP NULL, created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
+            );
+            CREATE TABLE erp_test_a.users (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255),
+              email VARCHAR(255), password VARCHAR(255), active BOOLEAN,
+              locale VARCHAR(5), remember_token VARCHAR(100) NULL,
+              created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
+            );
+            CREATE TABLE erp_test_b.users LIKE erp_test_a.users;
+            CREATE TABLE erp_test_a.customers (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              code VARCHAR(255), name VARCHAR(255),
+              created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
+            );
+            CREATE TABLE erp_test_b.customers LIKE erp_test_a.customers;
+            ALTER TABLE erp_test_a.customers ADD COLUMN phone VARCHAR(40) NULL, ADD COLUMN email VARCHAR(255) NULL;
+            ALTER TABLE erp_test_b.customers ADD COLUMN phone VARCHAR(40) NULL, ADD COLUMN email VARCHAR(255) NULL;
+            CREATE TABLE erp_test_a.roles (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100));
+            CREATE TABLE erp_test_b.roles LIKE erp_test_a.roles;
+            CREATE TABLE erp_test_a.permissions (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100));
+            CREATE TABLE erp_test_b.permissions LIKE erp_test_a.permissions;
+            CREATE TABLE erp_test_a.role_user (user_id BIGINT UNSIGNED, role_id BIGINT UNSIGNED);
+            CREATE TABLE erp_test_b.role_user LIKE erp_test_a.role_user;
+            CREATE TABLE erp_test_a.permission_role (role_id BIGINT UNSIGNED, permission_id BIGINT UNSIGNED);
+            CREATE TABLE erp_test_b.permission_role LIKE erp_test_a.permission_role;
+            CREATE TABLE erp_test_a.branches (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, code VARCHAR(40), name VARCHAR(255), active BOOLEAN,
+              created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
+            );
+            CREATE TABLE erp_test_b.branches LIKE erp_test_a.branches;
+            CREATE TABLE erp_test_a.branch_user (
+              branch_id BIGINT UNSIGNED, user_id BIGINT UNSIGNED,
+              created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL,
+              PRIMARY KEY(branch_id,user_id)
+            );
+            CREATE TABLE erp_test_b.branch_user LIKE erp_test_a.branch_user;
+            CREATE TABLE erp_test_a.warehouses (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, branch_id BIGINT UNSIGNED,
+              code VARCHAR(40), name VARCHAR(255)
+            );
+            CREATE TABLE erp_test_b.warehouses LIKE erp_test_a.warehouses;
+            CREATE TABLE erp_test_a.products (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              name VARCHAR(190) NOT NULL
+            );
+            CREATE TABLE erp_test_b.products LIKE erp_test_a.products;
+            CREATE TABLE erp_test_a.product_variants (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              product_id BIGINT UNSIGNED NULL,
+              sku VARCHAR(100) NULL,
+              average_cost DECIMAL(18,4) NOT NULL DEFAULT 0
+            );
+            CREATE TABLE erp_test_b.product_variants LIKE erp_test_a.product_variants;
+            CREATE TABLE erp_test_a.stock_balances (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              warehouse_id BIGINT UNSIGNED NOT NULL,
+              product_variant_id BIGINT UNSIGNED NOT NULL,
+              quantity DECIMAL(18,4) NOT NULL DEFAULT 0
+            );
+            CREATE TABLE erp_test_b.stock_balances LIKE erp_test_a.stock_balances;
+            CREATE TABLE erp_test_a.suppliers (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              name VARCHAR(190) NOT NULL DEFAULT 'CI Supplier'
+            );
+            CREATE TABLE erp_test_b.suppliers LIKE erp_test_a.suppliers;
+            CREATE TABLE erp_test_a.sales_invoices (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              warehouse_id BIGINT UNSIGNED NOT NULL,
+              customer_id BIGINT UNSIGNED NULL, number VARCHAR(100) NULL,
+              total DECIMAL(18,2) NULL, currency_code CHAR(3) NULL,
+              status VARCHAR(30) NULL, created_at TIMESTAMP NULL
+            );
+            CREATE TABLE erp_test_b.sales_invoices LIKE erp_test_a.sales_invoices;
+            CREATE TABLE erp_test_a.currencies (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              code CHAR(3), active BOOLEAN
+            );
+            CREATE TABLE erp_test_b.currencies LIKE erp_test_a.currencies;
+            CREATE TABLE erp_test_a.company_settings (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              base_currency CHAR(3)
+            );
+            CREATE TABLE erp_test_b.company_settings LIKE erp_test_a.company_settings;
+          "
+      - name: Verify full central and tenant migrations on fresh MySQL schemas
+        run: |
+          docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
+            CREATE DATABASE erp_test_schema_central;
+            CREATE DATABASE erp_test_schema_tenant;
+            GRANT ALL PRIVILEGES ON erp_test_schema_central.* TO 'erp_test_central_user'@'%';
+            GRANT ALL PRIVILEGES ON erp_test_schema_tenant.* TO 'erp_test_a_user'@'%';"
+          DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
+          DB_DATABASE=erp_test_schema_central DB_USERNAME=erp_test_central_user DB_PASSWORD=ci-central-test-only \
+          php artisan migrate --path=database/migrations/0001_01_01_000000_create_users_table.php --force --no-interaction
+          DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
+          DB_DATABASE=erp_test_schema_central DB_USERNAME=erp_test_central_user DB_PASSWORD=ci-central-test-only \
+          php artisan migrate --path=database/migrations/erp_central --force --no-interaction
+          DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
+          DB_DATABASE=erp_test_schema_tenant DB_USERNAME=erp_test_a_user DB_PASSWORD=ci-tenant-a-test-only \
+          php -r '
+            require "vendor/autoload.php";
+            $app = require "bootstrap/app.php";
+            $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            config(["database.connections.erp_tenant" => config("database.connections.mysql")]);
+            $status = \Illuminate\Support\Facades\Artisan::call("migrate", [
+              "--database" => "erp_tenant",
+              "--path" => "database/migrations/erp_tenant",
+              "--force" => true,
+              "--no-interaction" => true,
+            ]);
+            echo \Illuminate\Support\Facades\Artisan::output();
+            exit($status);
+          '
+          docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -e "
+            SELECT COUNT(*) AS central_tables FROM information_schema.tables WHERE table_schema='erp_test_schema_central';
+            SELECT COUNT(*) AS tenant_tables FROM information_schema.tables WHERE table_schema='erp_test_schema_tenant';"
+      - name: Assert fresh schema isolation and branch foreign keys
+        run: |
+          set -euo pipefail
+          mysql_ci() {
+            docker exec ${{ job.services.mysql.id }} mysql -uroot -pci-disposable-root-only -N -s -e "$1"
+          }
+          central_tables="$(mysql_ci "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='erp_test_schema_central' AND table_name IN ('users','erp_tenants','erp_plans','erp_subscriptions');")"
+          tenant_tables="$(mysql_ci "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='erp_test_schema_tenant' AND table_name IN ('users','branches','branch_user','warehouses','sales_invoices','stock_balances');")"
+          tenant_branch_keys="$(mysql_ci "SELECT COUNT(*) FROM information_schema.key_column_usage WHERE table_schema='erp_test_schema_tenant' AND table_name='branch_user' AND referenced_table_name IN ('branches','users');")"
+          central_leaks="$(mysql_ci "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='erp_test_schema_central' AND table_name IN ('branch_user','sales_invoices','stock_balances');")"
+          tenant_leaks="$(mysql_ci "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='erp_test_schema_tenant' AND table_name IN ('erp_tenants','erp_plans','erp_subscriptions');")"
+          test "$central_tables" -eq 4
+          test "$tenant_tables" -eq 6
+          test "$tenant_branch_keys" -eq 2
+          test "$central_leaks" -eq 0
+          test "$tenant_leaks" -eq 0
+          echo "Fresh MySQL schemas have required tables, isolated ownership and branch membership foreign keys."
+      - name: Lint tenant middleware and integration tests
+        run: |
+          php -l app/Console/Commands/ProvisionErpTenant.php
+          php -l app/Console/Commands/AuditErpBranchMemberships.php
+          php artisan list --raw | grep -q 'erp:audit-branch-memberships'
+          php -l app/Http/Middleware/ResolveErpTenant.php
+          php -l tests/Feature/ERP/TenantHttpIsolationTest.php
+          php -l tests/Feature/ERP/TenantMysqlConnectionTest.php
+      - name: Run tenant HTTP isolation test
+        run: php artisan test --filter TenantHttpIsolationTest --stop-on-failure
+      - name: Run database permission boundary test
+        run: php artisan test --filter TenantMysqlConnectionTest --stop-on-failure
+      - name: Verified test scope
+        run: echo 'Tenant HTTP login, authorized customer isolation, session replay, and MySQL permission boundary tests executed.'
