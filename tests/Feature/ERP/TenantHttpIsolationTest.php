@@ -343,6 +343,34 @@ final class TenantHttpIsolationTest extends TestCase
                 ->getJson('http://tenant-a.erp.test/erp/customers/data')->assertOk();
             $this->flushSession();
 
+            // Removing a role assignment from an already signed-in user
+            // must revoke authorization on the next request.
+            $this->flushSession();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->post('http://tenant-a.erp.test/erp/login', [
+                    'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                ])->assertRedirect();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->getJson('http://tenant-a.erp.test/erp/customers/data')->assertOk();
+            $roleAssignment = DB::connection('fixture_A')->table('role_user')->first();
+            $this->assertNotNull($roleAssignment);
+            DB::connection('fixture_A')->table('role_user')
+                ->where('user_id', $roleAssignment->user_id)
+                ->where('role_id', $roleAssignment->role_id)->delete();
+            try {
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->getJson('http://tenant-a.erp.test/erp/customers/data')->assertForbidden();
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            } finally {
+                DB::connection('fixture_A')->table('role_user')->insert([
+                    'user_id' => $roleAssignment->user_id,
+                    'role_id' => $roleAssignment->role_id,
+                ]);
+            }
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->getJson('http://tenant-a.erp.test/erp/customers/data')->assertOk();
+            $this->flushSession();
+
             // Revoking a user must invalidate an already authenticated
             // session without requiring the user to log out manually.
             $this->flushSession();
