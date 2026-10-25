@@ -26,8 +26,8 @@ Phases 2.34–2.46 covered tenant host resolution, proxy boundaries, session sco
 **HOLD** until latest CI is green, staging acceptance is documented, legacy branch membership access is resolved, and the owner explicitly authorizes merge/deployment. Never deploy from this review automatically.
 
 ## Phase 2.53 development checkpoint
-- CI passed for commit `5abd065` (both security and disposable MySQL workflows).
-- Later commits added lifecycle flag checks, safe environment contract tests, tenant owner HQ membership assignment and MySQL workflow triggers. **Check CI on the final head before considering the automated gate complete.**
+- CI passed for commit `4bee694` (both security and disposable MySQL workflows).
+- Later commits added lifecycle flag checks, safe environment contract tests, tenant owner HQ membership assignment, read-only legacy branch audits, and central DB_URL isolation. Both workflows passed on `4bee694`. **Recheck CI on any newer final head.**
 - The tenant owner provisioning regression test currently checks the command's source contract; it does **not** substitute for an end-to-end tenant provisioning smoke test on a disposable MySQL database.
 - Development hardening can be considered implemented, but staging acceptance, legacy tenant branch migration, backup restore and production configuration remain release blockers.
 
@@ -42,3 +42,19 @@ Phases 2.34–2.46 covered tenant host resolution, proxy boundaries, session sco
 - TenantConnector explicitly removes the inherited central MySQL `url` key before configuring `erp_tenant` (commit `bec7803`). A configured central `DB_URL` must never override tenant database credentials.
 - Disposable MySQL regression coverage injects a deliberately invalid central URL and verifies the tenant's own database, username and access boundaries (commit `391c04a`).
 - Before release, verify the deployed configuration cache and each tenant's database account privileges; no tenant account should be able to read another tenant schema.
+
+## Staging acceptance evidence checklist (not yet executed)
+Record the environment, timestamp, test tenant IDs, operator and pass/fail evidence without passwords, customer records or connection secrets.
+- [ ] HTTPS and Secure/HttpOnly/SameSite host-only session cookies verified in browser.
+- [ ] Tenant A and B login/logout and cross-host cookie/session replay denial verified.
+- [ ] Tenant status and suspension timestamp each deny access; reactivation requires both cleared/active.
+- [ ] Disabled users and revoked roles or branch memberships lose access immediately.
+- [ ] Restricted warehouse sales, stock receipts and invoice PDF are denied; authorized branch restoration works.
+- [ ] Branch membership audit returns zero missing active memberships after explicit owner-approved assignments.
+- [ ] Shared cache-backed login throttling and trusted proxy/client IP behavior verified.
+- [ ] Fresh tenant provisioning smoke, rollback on failure, and database privilege boundaries verified.
+- [ ] Encrypted backup created and successfully restored to an isolated staging database; integrity checked.
+- [ ] Queue/scheduler tenant context cleanup, logs, alerts and recovery procedure reviewed.
+- [ ] Mobile/tablet navigation and RTL language layouts manually checked.
+
+**No checkbox above is automatically satisfied by green GitHub Actions.**
