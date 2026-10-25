@@ -8,6 +8,23 @@ use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
 {
+    public function test_queue_before_event_removes_stale_database_credentials(): void
+    {
+        config(['database.connections.erp_tenant' => [
+            'driver' => 'mysql', 'database' => 'tenant_previous',
+            'username' => 'previous_user', 'password' => 'previous_secret',
+        ]]);
+        app()->instance('erp.current_tenant', new \stdClass());
+
+        $job = new \Illuminate\Queue\Jobs\SyncJob(
+            app(), '{"uuid":"next-job","displayName":"next-job","job":"next-job","data":{}}', 'sync', 'default'
+        );
+        app('events')->dispatch(new \Illuminate\Queue\Events\JobProcessing('sync', $job));
+
+        $this->assertNull(config('database.connections.erp_tenant'));
+        $this->assertFalse(app()->bound('erp.current_tenant'));
+    }
+
     public function test_worker_cleanup_removes_previous_tenant_database_credentials(): void
     {
         config(['database.connections.erp_tenant' => [
