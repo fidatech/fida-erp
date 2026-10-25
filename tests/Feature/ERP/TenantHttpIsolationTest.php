@@ -311,6 +311,11 @@ final class TenantHttpIsolationTest extends TestCase
                     'role_id' => $roleId, 'permission_id' => $permissionId,
                 ]);
             }
+            $this->flushSession();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->post('http://tenant-a.erp.test/erp/login', [
+                    'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                ])->assertRedirect();
             $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
                 ->getJson('http://tenant-a.erp.test/erp/customers/data')->assertOk();
             $this->flushSession();
