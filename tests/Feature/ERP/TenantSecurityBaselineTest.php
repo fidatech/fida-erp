@@ -53,6 +53,26 @@ final class TenantSecurityBaselineTest extends TestCase
         $this->assertFalse(app()->bound('erp.current_tenant'));
     }
 
+    public function test_scoped_background_execution_cleans_up_when_tenant_is_invalid(): void
+    {
+        $tenant = new Tenant();
+        $tenant->database_name = 'invalid-name';
+        $tenant->database_username = 'valid_user';
+        $tenant->database_password = 'placeholder';
+
+        try {
+            app(TenantConnector::class)->withinTenant($tenant, function (): void {
+                $this->fail('Invalid tenant must not execute background callback.');
+            });
+            $this->fail('Invalid tenant connection was accepted.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertSame('Invalid tenant database identifier', $e->getMessage());
+        }
+
+        $this->assertFalse(app()->bound('erp.current_tenant'));
+        $this->assertNull(config('database.connections.erp_tenant'));
+    }
+
     public function test_worker_cleanup_removes_previous_tenant_database_credentials(): void
     {
         config(['database.connections.erp_tenant' => [
