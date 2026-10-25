@@ -302,6 +302,24 @@ final class TenantHttpIsolationTest extends TestCase
                 $this->assertFalse(app()->bound('erp.current_tenant'));
             }
 
+            // Verify suspension revokes a session that was already logged in,
+            // not merely access from anonymous browsers.
+            $this->flushSession();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->post('http://tenant-b.erp.test/erp/login', [
+                    'email' => 'owner@example.test', 'password' => 'TestPassword123!',
+                ])->assertRedirect();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->getJson('http://tenant-b.erp.test/erp/customers/data')->assertOk();
+            $tenants[1]->update(['suspended_at' => now()]);
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->get('http://tenant-b.erp.test/erp/login')->assertNotFound();
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->getJson('http://tenant-b.erp.test/erp/customers/data')
+                ->assertNotFound();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            $tenants[1]->update(['suspended_at' => null]);
+
             // Ensure no prior tenant session can affect the suspension
             // response assertion through the session-binding middleware.
             $this->flushSession();
