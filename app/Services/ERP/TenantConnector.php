@@ -45,6 +45,21 @@ final class TenantConnector
         }
     }
 
+    /**
+     * Run tenant-specific background work with an explicit connection scope.
+     * Never reuse an implicit tenant from a prior command or queue job.
+     */
+    public function withinTenant(Tenant $tenant, callable $callback): mixed
+    {
+        $this->resetWorkerContext();
+        try {
+            $this->connect($tenant);
+            return $callback();
+        } finally {
+            $this->resetWorkerContext();
+        }
+    }
+
     public function disconnect(): void
     {
         try {
