@@ -37,3 +37,8 @@ Phases 2.34–2.46 covered tenant host resolution, proxy boundaries, session sco
 3. Repeat the audit and test permitted/restricted warehouses, sales and invoice PDFs before scheduling cutover.
 4. Suspended tenants intentionally fail the audit until reactivated by an authorized administrator.
 5. The command is read-only; its presence does not certify that a legacy tenant has been migrated.
+
+## Central DB_URL isolation check
+- TenantConnector explicitly removes the inherited central MySQL `url` key before configuring `erp_tenant` (commit `bec7803`). A configured central `DB_URL` must never override tenant database credentials.
+- Disposable MySQL regression coverage injects a deliberately invalid central URL and verifies the tenant's own database, username and access boundaries (commit `391c04a`).
+- Before release, verify the deployed configuration cache and each tenant's database account privileges; no tenant account should be able to read another tenant schema.
