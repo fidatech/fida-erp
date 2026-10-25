@@ -280,6 +280,11 @@ final class TenantHttpIsolationTest extends TestCase
                 ->post('http://tenant-a.erp.test/erp/login', [
                     'email' => 'owner@example.test', 'password' => 'TestPassword123!',
                 ])->assertRedirect();
+            // Posting a sale is a separate financial privilege and must
+            // be denied before the controller can change any records.
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                ->postJson('http://tenant-a.erp.test/erp/sales/1/post')->assertForbidden();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
             foreach ([
                 '/erp/products/data',
                 '/erp/stock',
