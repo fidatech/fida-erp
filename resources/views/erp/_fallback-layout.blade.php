@@ -20,7 +20,7 @@
 <a href="{{ route('erp.sales.index') }}" class="{{ request()->routeIs('erp.sales.*')?'active':'' }}">▤ {{ __('erp::ui.sales') }}</a>
 <a href="{{ route('erp.profile') }}" class="{{ request()->routeIs('erp.profile*')?'active':'' }}">◎ {{ __('erp::ui.profile') }}</a>
 </nav></aside>
-<div class="erp-main"><header class="erp-top"><div class="erp-flex"><button class="erp-btn secondary erp-mobile" type="button" id="erp-menu-toggle" aria-controls="erp-sidebar" aria-expanded="false" aria-label="Toggle navigation">☰</button><b>Fida ERP</b><span class="erp-muted">{{ app('erp.current_tenant')->business_name }}</span></div>
+<div class="erp-main"><header class="erp-top"><div class="erp-flex"><button class="erp-btn secondary erp-mobile" type="button" id="erp-menu-toggle" aria-controls="erp-sidebar" aria-expanded="false" aria-label="Toggle navigation" aria-haspopup="true">☰</button><b>Fida ERP</b><span class="erp-muted">{{ app('erp.current_tenant')->business_name }}</span></div>
 <div class="erp-flex"><form action="{{ route('erp.locale') }}" method="POST">@csrf<select class="erp-lang" name="locale" onchange="this.form.submit()"><option value="en" @selected(app()->getLocale()==='en')>English</option><option value="fa" @selected(app()->getLocale()==='fa')>دری</option><option value="ps" @selected(app()->getLocale()==='ps')>پښتو</option></select></form>
 <span class="erp-muted">{{ auth('erp_tenant')->user()?->name }}</span><form action="{{ route('erp.logout') }}" method="POST">@csrf<button class="erp-btn secondary">{{ __('erp::ui.logout') }}</button></form></div></header>
 <main class="erp-content">@if(session('success'))<div class="erp-success">{{ session('success') }}</div>@endif
@@ -35,12 +35,17 @@ const overlay=document.getElementById('erp-menu-overlay');
 if(!sidebar||!toggle||!overlay)return;
 function setOpen(open){sidebar.classList.toggle('open',open);
 document.body.classList.toggle('erp-menu-open',open);
-toggle.setAttribute('aria-expanded',String(open));}
+toggle.setAttribute('aria-expanded',String(open));
+sidebar.setAttribute('aria-hidden',String(!open && window.innerWidth<=820));
+if(open){sidebar.querySelector('a')?.focus();}
+else if(document.activeElement && sidebar.contains(document.activeElement)){toggle.focus();}}
 toggle.addEventListener('click',()=>setOpen(!sidebar.classList.contains('open')));
 overlay.addEventListener('click',()=>setOpen(false));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')setOpen(false);});
 sidebar.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>setOpen(false)));
-window.addEventListener('resize',()=>{if(window.innerWidth>820)setOpen(false);});
+window.addEventListener('resize',()=>{if(window.innerWidth>820)setOpen(false);
+sidebar.setAttribute('aria-hidden',String(window.innerWidth<=820 && !sidebar.classList.contains('open')));});
+sidebar.setAttribute('aria-hidden',String(window.innerWidth<=820 && !sidebar.classList.contains('open')));
 })();
 </script>
 @yield('scripts')
