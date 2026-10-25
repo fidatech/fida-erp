@@ -8,6 +8,18 @@ use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
 {
+    public function test_queue_before_event_clears_previous_job_tenant_context(): void
+    {
+        app()->instance('erp.current_tenant', new \stdClass());
+
+        $job = new \Illuminate\Queue\Jobs\SyncJob(
+            app(), '{"uuid":"retry-test","displayName":"cleanup-retry-test","job":"cleanup-retry-test","data":{}}', 'sync', 'default'
+        );
+        app('events')->dispatch(new \Illuminate\Queue\Events\JobProcessing('sync', $job));
+
+        $this->assertFalse(app()->bound('erp.current_tenant'));
+    }
+
     public function test_queue_failed_event_invokes_registered_tenant_cleanup(): void
     {
         app()->instance('erp.current_tenant', new \stdClass());
