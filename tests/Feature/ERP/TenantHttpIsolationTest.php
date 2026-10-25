@@ -234,6 +234,39 @@ final class TenantHttpIsolationTest extends TestCase
                 ->assertNotFound();
             $this->assertFalse(app()->bound('erp.current_tenant'));
             $branchDb->table('branches')->where('id', $allowedBranchId)->update(['active' => 1]);
+
+            // Revoking a user's branch membership must immediately deny
+            // listing, direct invoice posting and PDF access in the same session.
+            $currentUserId = (int) $branchDb->table('users')
+                ->where('email', 'owner@example.test')->value('id');
+            $branchDb->table('branch_user')
+                ->where('branch_id', $allowedBranchId)
+                ->where('user_id', $currentUserId)->delete();
+            try {
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->get('http://tenant-a.erp.test/erp/sales')
+                    ->assertOk()->assertDontSee('ALLOWED-INVOICE');
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->postJson('http://tenant-a.erp.test/erp/sales/'.$allowedInvoiceId.'/post')
+                    ->assertForbidden();
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->get('http://tenant-a.erp.test/erp/sales/'.$allowedInvoiceId.'/pdf')
+                    ->assertNotFound();
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+                $this->withServerVariables(['HTTP_HOST' => 'tenant-a.erp.test'])
+                    ->postJson('http://tenant-a.erp.test/erp/stock/receive', [
+                        'warehouse_id' => $allowedWarehouse,
+                    ])->assertForbidden();
+                $this->assertFalse(app()->bound('erp.current_tenant'));
+            } finally {
+                $branchDb->table('branch_user')->insert([
+                    'branch_id' => $allowedBranchId,
+                    'user_id' => $currentUserId,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
             $this->flushSession();
             foreach ([$stockPermissionId, $salesPermissionId, $postPermissionId] as $newPermissionId) {
                 $branchDb->table('permission_role')->where('permission_id', $newPermissionId)->delete();
