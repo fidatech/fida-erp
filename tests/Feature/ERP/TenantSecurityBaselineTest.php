@@ -169,6 +169,17 @@ final class TenantSecurityBaselineTest extends TestCase
         $this->assertSame('allowed', $response->getContent());
     }
 
+    public function test_platform_admin_gate_rejects_anonymous_request_on_platform_host(): void
+    {
+        config(['erp.platform_host' => 'platform.erp.test']);
+        $request = \Illuminate\Http\Request::create('http://platform.erp.test/platform/erp', 'GET');
+        $request->setUserResolver(fn () => null);
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        app(\App\Http\Middleware\ErpPlatformAdmin::class)
+            ->handle($request, fn () => response('unexpected'));
+    }
+
     public function test_tenant_routes_require_tenant_resolution_middleware(): void
     {
         $routes = app('router')->getRoutes();
