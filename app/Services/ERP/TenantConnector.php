@@ -30,6 +30,21 @@ final class TenantConnector
         }
     }
 
+    /**
+     * Clear all tenant connection configuration at a background-job boundary.
+     * HTTP requests use disconnect() because session teardown may still need
+     * the connection definition after middleware has returned.
+     */
+    public function resetWorkerContext(): void
+    {
+        try {
+            $this->disconnect();
+        } finally {
+            config()->offsetUnset('database.connections.erp_tenant');
+            app()->forgetInstance('erp.current_tenant');
+        }
+    }
+
     public function disconnect(): void
     {
         try {
