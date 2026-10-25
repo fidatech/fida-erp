@@ -8,6 +8,17 @@ use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
 {
+    public function test_development_env_template_disables_debug_and_encrypts_sessions(): void
+    {
+        $template = file_get_contents(base_path('.env.example'));
+        $this->assertIsString($template);
+        $this->assertMatchesRegularExpression('/^APP_DEBUG=false$/m', $template);
+        $this->assertMatchesRegularExpression('/^SESSION_ENCRYPT=true$/m', $template);
+        $this->assertMatchesRegularExpression('/^ERP_TRUSTED_PROXIES=$/m', $template);
+        $this->assertMatchesRegularExpression('/^SESSION_DOMAIN=null$/m', $template);
+        $this->assertStringNotContainsString('APP_KEY=base64:', $template);
+    }
+
     public function test_tenant_login_throttle_separates_hosts_accounts_and_ip_budgets(): void
     {
         $limiter = \Illuminate\Support\Facades\RateLimiter::limiter('erp-tenant-login');
