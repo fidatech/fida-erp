@@ -8,6 +8,54 @@ use Tests\TestCase;
 
 final class TenantSecurityBaselineTest extends TestCase
 {
+    public function test_tenant_login_throttle_separates_hosts_accounts_and_ip_budgets(): void
+    {
+        $limiter = \Illuminate\Support\Facades\RateLimiter::limiter('erp-tenant-login');
+        $request = \Illuminate\Http\Request::create(
+            'https://tenant-a.erp.test/erp/login', 'POST',
+            ['email' => 'OWNER@example.test']
+        );
+        $request->server->set('REMOTE_ADDR', '192.0.2.10');
+        $a = $limiter($request);
+        $this->assertCount(2, $a);
+        $this->assertSame(12, $a[0]->maxAttempts);
+        $this->assertSame(6, $a[1]->maxAttempts);
+
+        $otherHost = \Illuminate\Http\Request::create(
+            'https://tenant-b.erp.test/erp/login', 'POST',
+            ['email' => 'owner@example.test']
+        );
+        $otherHost->server->set('REMOTE_ADDR', '192.0.2.10');
+        $b = $limiter($otherHost);
+        $this->assertNotSame($a[0]->key, $b[0]->key);
+        $this->assertNotSame($a[1]->key, $b[1]->key);
+
+        $otherAccount = \Illuminate\Http\Request::create(
+            'https://tenant-a.erp.test/erp/login', 'POST',
+            ['email' => 'different@example.test']
+        );
+        $otherAccount->server->set('REMOTE_ADDR', '192.0.2.10');
+        $c = $limiter($otherAccount);
+        $this->assertSame($a[0]->key, $c[0]->key);
+        $this->assertNotSame($a[1]->key, $c[1]->key);
+        $this->assertStringNotContainsString('owner@example.test', $a[1]->key);
+    }
+
+    public function test_platform_login_has_independent_rate_limit_keys(): void
+    {
+        $limiter = \Illuminate\Support\Facades\RateLimiter::limiter('erp-platform-login');
+        $request = \Illuminate\Http\Request::create(
+            'https://platform.erp.test/platform/erp/login', 'POST',
+            ['email' => 'admin@example.test']
+        );
+        $request->server->set('REMOTE_ADDR', '192.0.2.20');
+        $limits = $limiter($request);
+        $this->assertCount(2, $limits);
+        $this->assertSame(10, $limits[0]->maxAttempts);
+        $this->assertSame(5, $limits[1]->maxAttempts);
+        $this->assertStringNotContainsString('admin@example.test', $limits[1]->key);
+    }
+
     public function test_retryable_job_exception_scrubs_tenant_credentials_before_retry(): void
     {
         config(['database.connections.erp_tenant' => [
