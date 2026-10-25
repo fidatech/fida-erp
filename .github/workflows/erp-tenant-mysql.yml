@@ -9,6 +9,9 @@ on:
       - 'app/Http/Middleware/ResolveErpTenant.php'
       - 'app/Services/ERP/TenantConnector.php'
       - 'app/Http/Middleware/ErpPermission.php'
+      - 'app/Http/Controllers/ERP/SalesController.php'
+      - 'app/Http/Controllers/ERP/StockController.php'
+      - 'database/migrations/erp_tenant/**'
       - 'app/Models/ERP/Tenant/**'
       - 'routes/erp.php'
       - 'routes/erp_platform.php'
@@ -121,6 +124,22 @@ jobs:
             CREATE TABLE erp_test_b.role_user LIKE erp_test_a.role_user;
             CREATE TABLE erp_test_a.permission_role (role_id BIGINT UNSIGNED, permission_id BIGINT UNSIGNED);
             CREATE TABLE erp_test_b.permission_role LIKE erp_test_a.permission_role;
+            CREATE TABLE erp_test_a.branches (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, code VARCHAR(40), name VARCHAR(255), active BOOLEAN,
+              created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
+            );
+            CREATE TABLE erp_test_b.branches LIKE erp_test_a.branches;
+            CREATE TABLE erp_test_a.branch_user (
+              branch_id BIGINT UNSIGNED, user_id BIGINT UNSIGNED,
+              created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL,
+              PRIMARY KEY(branch_id,user_id)
+            );
+            CREATE TABLE erp_test_b.branch_user LIKE erp_test_a.branch_user;
+            CREATE TABLE erp_test_a.warehouses (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, branch_id BIGINT UNSIGNED,
+              code VARCHAR(40), name VARCHAR(255)
+            );
+            CREATE TABLE erp_test_b.warehouses LIKE erp_test_a.warehouses;
           "
       - name: Lint tenant middleware and integration tests
         run: |
