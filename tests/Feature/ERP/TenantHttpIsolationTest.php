@@ -750,6 +750,17 @@ final class TenantHttpIsolationTest extends TestCase
             );
             $this->assertFalse(app()->bound('erp.current_tenant'));
 
+            // A status-only suspension (without suspended_at) must also deny
+            // access; reactivation requires both central flags to be healthy.
+            $tenants[1]->update(['status' => 'suspended', 'suspended_at' => null]);
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->get('http://tenant-b.erp.test/erp/login')->assertNotFound();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+            $tenants[1]->update(['status' => 'active', 'suspended_at' => now()]);
+            $this->withServerVariables(['HTTP_HOST' => 'tenant-b.erp.test'])
+                ->get('http://tenant-b.erp.test/erp/login')->assertNotFound();
+            $this->assertFalse(app()->bound('erp.current_tenant'));
+
             // Restoring an unsuspended tenant must restore hostname
             // resolution without granting anonymous access to its data.
             $tenants[1]->update(['suspended_at' => null]);
