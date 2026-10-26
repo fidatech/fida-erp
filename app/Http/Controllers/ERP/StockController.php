@@ -20,10 +20,12 @@ final class StockController extends Controller
   return view('erp.stock.index',['warehouses'=>$db->table('warehouses')->whereIn('id',$this->allowedWarehouseIds())->get(),'currencies'=>$db->table('currencies')->where('active',1)->get(),
       'suppliers'=>$db->table('suppliers')->select('id','name')->orderBy('name')->limit(200)->get(),
       'base'=>$db->table('company_settings')->value('base_currency'),
-      'receipts'=>$db->table('goods_receipts as g')->join('suppliers as su','su.id','=','g.supplier_id')
-        ->select('g.id','g.number','g.total','g.currency_code','su.name as supplier')
-        ->selectRaw('(SELECT COALESCE(SUM(amount),0) FROM supplier_payments WHERE goods_receipt_id=g.id) as paid')
-        ->orderByDesc('g.id')->limit(15)->get(),
+      'receipts'=>$db->getSchemaBuilder()->hasTable('goods_receipts') && $db->getSchemaBuilder()->hasTable('supplier_payments')
+        ? $db->table('goods_receipts as g')->join('suppliers as su','su.id','=','g.supplier_id')
+            ->select('g.id','g.number','g.total','g.currency_code','su.name as supplier')
+            ->selectRaw('(SELECT COALESCE(SUM(amount),0) FROM supplier_payments WHERE goods_receipt_id=g.id) as paid')
+            ->orderByDesc('g.id')->limit(15)->get()
+        : collect(),
             'rows'=>$db->table('stock_balances as s')->join('product_variants as v','v.id','=','s.product_variant_id')
          ->join('products as p','p.id','=','v.product_id')->join('warehouses as w','w.id','=','s.warehouse_id')
          ->select('p.name','v.sku','w.name as warehouse','s.quantity','v.average_cost')->orderBy('s.id','desc')->simplePaginate(25)]);
