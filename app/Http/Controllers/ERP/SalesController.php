@@ -24,6 +24,7 @@ final class SalesController extends Controller
         ];
         $db=DB::connection('erp_tenant');
         $query=$db->table('sales_invoices as s')->join('customers as c','c.id','=','s.customer_id');
+        $query->whereIn('s.warehouse_id', app(BranchWarehouseAccess::class)->allowedWarehouseIds());
         if($filters['q']!==''){
             $term=$filters['q'];
             $query->where(fn($q)=>$q->where('s.number','like',$term.'%')->orWhere('c.name','like',$term.'%'));
@@ -33,10 +34,11 @@ final class SalesController extends Controller
         if($filters['to']!=='')$query->whereDate('s.created_at','<=',$filters['to']);
         $rows=(clone $query)->select('s.id','s.number','s.total','s.paid','s.currency_code','s.status','s.created_at','c.name as customer')
             ->orderByDesc('s.id')->cursorPaginate(25)->withQueryString();
-        $posted=$db->table('sales_invoices')->where('status','posted');
+        $allowedWarehouseIds = app(BranchWarehouseAccess::class)->allowedWarehouseIds();
+        $posted=$db->table('sales_invoices')->whereIn('warehouse_id', $allowedWarehouseIds)->where('status','posted');
         $totals=(clone $posted)->selectRaw('COALESCE(SUM(total*fx_rate),0) as value, COALESCE(SUM((total-paid)*fx_rate),0) as due')->first();
         $stats=[
-            'all'=>$db->table('sales_invoices')->count(),
+            'all'=>$db->table('sales_invoices')->whereIn('warehouse_id', $allowedWarehouseIds)->count(),
             'posted'=>(clone $posted)->count(),
             'value'=>(float)$totals->value,
             'outstanding'=>(float)$totals->due,
@@ -44,7 +46,7 @@ final class SalesController extends Controller
         ];
         return view('erp.sales.index',compact('rows','filters','stats'));
     }
-    public function create(){return view('erp.sales.create',['warehouses'=>DB::connection('erp_tenant')->table('warehouses')->orderBy('name')->get(),'branches'=>DB::connection('erp_tenant')->table('branches')->orderBy('name')->get(),
+    public function create(){return view('erp.sales.create',['warehouses'=>DB::connection('erp_tenant')->table('warehouses')->whereIn('id', app(BranchWarehouseAccess::class)->allowedWarehouseIds())->orderBy('name')->get(),'branches'=>DB::connection('erp_tenant')->table('branches')->orderBy('name')->get(),
         'currencies'=>DB::connection('erp_tenant')->table('currencies')->where('active',1)->get(),
         'base'=>DB::connection('erp_tenant')->table('company_settings')->value('base_currency')]);}
     private function authorizeRequestedWarehouse(Request $request): void
