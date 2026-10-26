@@ -208,6 +208,9 @@ jobs:
           php artisan migrate --path=database/migrations/0001_01_01_000000_create_users_table.php --force --no-interaction
           DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
           DB_DATABASE=erp_test_schema_central DB_USERNAME=erp_test_central_user DB_PASSWORD=ci-central-test-only \
+          php artisan migrate --path=database/migrations/2026_10_22_000001_create_erp_registration_requests.php --force --no-interaction
+          DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
+          DB_DATABASE=erp_test_schema_central DB_USERNAME=erp_test_central_user DB_PASSWORD=ci-central-test-only \
           php artisan migrate --path=database/migrations/erp_central --force --no-interaction
           DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
           DB_DATABASE=erp_test_schema_tenant DB_USERNAME=erp_test_a_user DB_PASSWORD=ci-tenant-a-test-only \
