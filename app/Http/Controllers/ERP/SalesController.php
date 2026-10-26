@@ -47,6 +47,13 @@ final class SalesController extends Controller
     public function create(){return view('erp.sales.create',['warehouses'=>DB::connection('erp_tenant')->table('warehouses')->orderBy('name')->get(),'branches'=>DB::connection('erp_tenant')->table('branches')->orderBy('name')->get(),
         'currencies'=>DB::connection('erp_tenant')->table('currencies')->where('active',1)->get(),
         'base'=>DB::connection('erp_tenant')->table('company_settings')->value('base_currency')]);}
+    private function authorizeRequestedWarehouse(Request $request): void
+    {
+        $warehouseId = $request->input('warehouse_id');
+        abort_unless(filter_var($warehouseId, FILTER_VALIDATE_INT) !== false
+            && app(BranchWarehouseAccess::class)->allows((int) $warehouseId), 403);
+    }
+
     public function store(Request $request,SaleService $service){
         $this->authorizeRequestedWarehouse($request);
         $input=$request->validate(['request_key'=>'required|uuid', 'customer_id'=>'required|integer|exists:erp_tenant.customers,id',
