@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\ERP;
 use App\Http\Controllers\Controller;
+use App\Services\ERP\BranchWarehouseAccess;
 use App\Services\ERP\SaleService;
 use App\Services\ERP\SettlementService;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ final class SalesController extends Controller
         ];
         $db=DB::connection('erp_tenant');
         $query=$db->table('sales_invoices as s')->join('customers as c','c.id','=','s.customer_id');
+        $query->whereIn('s.warehouse_id', app(BranchWarehouseAccess::class)->allowedWarehouseIds());
         if($filters['q']!==''){
             $term=$filters['q'];
             $query->where(fn($q)=>$q->where('s.number','like',$term.'%')->orWhere('c.name','like',$term.'%'));
@@ -32,10 +34,11 @@ final class SalesController extends Controller
         if($filters['to']!=='')$query->whereDate('s.created_at','<=',$filters['to']);
         $rows=(clone $query)->select('s.id','s.number','s.total','s.paid','s.currency_code','s.status','s.created_at','c.name as customer')
             ->orderByDesc('s.id')->cursorPaginate(25)->withQueryString();
-        $posted=$db->table('sales_invoices')->where('status','posted');
+        $allowedWarehouseIds = app(BranchWarehouseAccess::class)->allowedWarehouseIds();
+        $posted=$db->table('sales_invoices')->whereIn('warehouse_id', $allowedWarehouseIds)->where('status','posted');
         $totals=(clone $posted)->selectRaw('COALESCE(SUM(total*fx_rate),0) as value, COALESCE(SUM((total-paid)*fx_rate),0) as due')->first();
         $stats=[
-            'all'=>$db->table('sales_invoices')->count(),
+            'all'=>$db->table('sales_invoices')->whereIn('warehouse_id', $allowedWarehouseIds)->count(),
             'posted'=>(clone $posted)->count(),
             'value'=>(float)$totals->value,
             'outstanding'=>(float)$totals->due,
@@ -43,10 +46,18 @@ final class SalesController extends Controller
         ];
         return view('erp.sales.index',compact('rows','filters','stats'));
     }
-    public function create(){return view('erp.sales.create',['warehouses'=>DB::connection('erp_tenant')->table('warehouses')->orderBy('name')->get(),
+    public function create(){return view('erp.sales.create',['warehouses'=>DB::connection('erp_tenant')->table('warehouses')->whereIn('id', app(BranchWarehouseAccess::class)->allowedWarehouseIds())->orderBy('name')->get(),'branches'=>DB::connection('erp_tenant')->table('branches')->orderBy('name')->get(),
         'currencies'=>DB::connection('erp_tenant')->table('currencies')->where('active',1)->get(),
         'base'=>DB::connection('erp_tenant')->table('company_settings')->value('base_currency')]);}
+    private function authorizeRequestedWarehouse(Request $request): void
+    {
+        $warehouseId = $request->input('warehouse_id');
+        abort_unless(filter_var($warehouseId, FILTER_VALIDATE_INT) !== false
+            && app(BranchWarehouseAccess::class)->allows((int) $warehouseId), 403);
+    }
+
     public function store(Request $request,SaleService $service){
+        $this->authorizeRequestedWarehouse($request);
         $input=$request->validate(['request_key'=>'required|uuid', 'customer_id'=>'required|integer|exists:erp_tenant.customers,id',
             'warehouse_id'=>'required|integer|exists:erp_tenant.warehouses,id', 'currency_code'=>'required|string|size:3',
             'fx_rate'=>'required|numeric|gt:0','discount'=>'nullable|numeric|min:0',
@@ -54,7 +65,7 @@ final class SalesController extends Controller
             'lines.*.quantity'=>'required|numeric|gt:0','lines.*.unit_price'=>'required|numeric|min:0',
             'lines.*.discount'=>'nullable|numeric|min:0','lines.*.tax'=>'nullable|numeric|min:0']);
         try{$id=$service->draft($input);}catch(DomainException|\InvalidArgumentException $e){return back()->withErrors(['sale'=>$e->getMessage()])->withInput();}
-        return redirect()->route('erp.sales.index')->with('success',__('erp::ui.invoice_drafted').' #'.$id);
+        return redirect()->route('erp.sales.index',['draft'=>$id])->with('success',__('erp::ui.invoice_drafted').' #'.$id);
     }
     public function receivePayment(Request $request, int $id, SettlementService $settlements){
         $data=$request->validate(['request_key'=>'required|uuid','amount'=>'required|numeric|gt:0']);
@@ -63,7 +74,9 @@ final class SalesController extends Controller
         return back()->with('success','Customer payment #'.$paymentId.' posted');
     }
     public function post(int $id,SaleService $service){
+        $warehouseId = DB::connection('erp_tenant')->table('sales_invoices')->where('id', $id)->value('warehouse_id');
+        abort_unless($warehouseId && app(BranchWarehouseAccess::class)->allows((int) $warehouseId), 403);
         try{$service->post($id);}catch(DomainException|\InvalidArgumentException $e){return back()->withErrors(['sale'=>$e->getMessage()]);}
-        return back()->with('success',__('erp::ui.invoice_posted'));
+        return redirect()->route('erp.sales.index',['pay'=>$id])->with('success',__('erp::ui.invoice_posted'));
     }
 }

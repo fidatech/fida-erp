@@ -14,7 +14,9 @@ final class CustomerController extends Controller
     }
     public function store(Request $request){
         $data=$request->validate(['name'=>'required|string|max:190','phone'=>'nullable|string|max:40','email'=>'nullable|email|max:255','address'=>'nullable|string|max:255']);
-        Customer::create(array_merge($data,['code'=>'CUS-'.Str::ulid()]));return back()->with('success',__('erp::ui.customer_added'));
+        $customer=Customer::create(array_merge($data,['code'=>'CUS-'.Str::ulid()]));
+        if($request->expectsJson())return response()->json(['id'=>$customer->id,'text'=>$customer->name],201);
+        return back()->with('success',__('erp::ui.customer_added'));
     }
     /** Cursor API designed for deep tables; avoids large OFFSET scans. */
     public function data(Request $request){

@@ -38,6 +38,9 @@ final class AutomaticTenantProvisioner
         $registration = $db->table('erp_registration_requests')->find($registrationId);
         if (!$registration) throw new RuntimeException('Registration not found');
         if ($registration->status === 'approved') return;
+        if ($registration->status === 'provisioning' && is_null($registration->email_verified_at) && !$db->table('erp_provisioning_runs')->where('registration_id',$registrationId)->exists()) {
+            throw new RuntimeException('Email verification required');
+        }
         if (!in_array($registration->status, ['reviewed','provisioning'],true)) {
             throw new RuntimeException('Administrator review required');
         }
@@ -127,7 +130,7 @@ final class AutomaticTenantProvisioner
                 }
                 $db->transaction(function () use ($db,$tenant,$run,$registrationId) {
                     $db->table('erp_tenants')->where('id',$tenant->id)->update([
-                        'status'=>'active','suspended_at'=>null,'updated_at'=>now()
+                        'status'=>'active','suspended_at'=>null,'trial_ends_at'=>now()->addDays(7),'updated_at'=>now()
                     ]);
                     $db->table('erp_registration_requests')->where('id',$registrationId)
                         ->where('status','provisioning')->update(['status'=>'approved','updated_at'=>now()]);

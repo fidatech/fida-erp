@@ -7,7 +7,11 @@ final class ErpPermission
 {
     public function handle(Request $request, Closure $next, string $permission): Response
     {
-        abort_unless(auth('erp_tenant')->check() && auth('erp_tenant')->user()->allowed($permission), 403);
+        $user = auth('erp_tenant')->user();
+        abort_unless(
+            $user && (bool) $user->getAttribute('active') && $user->allowed($permission),
+            403
+        );
         return $next($request);
     }
 }

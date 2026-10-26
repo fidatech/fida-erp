@@ -16,13 +16,15 @@ final class ProductController extends Controller
     public function store(Request $request){
         $data=$request->validate(['name'=>'required|string|max:190','sku'=>'nullable|string|max:80',
             'sale_price'=>'required|numeric|min:0','barcode'=>'nullable|string|max:80']);
-        DB::connection('erp_tenant')->transaction(function()use($data){
+        $created=DB::connection('erp_tenant')->transaction(function()use($data){
             $sku=$data['sku']??('SKU-'.Str::ulid());
             $p=Product::create(['name'=>$data['name'],'sku'=>$sku,'active'=>true]);
             $db=DB::connection('erp_tenant');
-            $db->table('product_variants')->insert(['product_id'=>$p->id,'sku'=>$sku.'-STD','barcode'=>$data['barcode']??null,
+            $variantId=$db->table('product_variants')->insertGetId(['product_id'=>$p->id,'sku'=>$sku.'-STD','barcode'=>$data['barcode']??null,
               'sale_price'=>$data['sale_price'],'average_cost'=>'0','active'=>1,'created_at'=>now(),'updated_at'=>now()]);
+            return ['id'=>$variantId,'text'=>$p->name.' / '.$sku.'-STD','price'=>$data['sale_price']];
         });
+        if($request->expectsJson())return response()->json($created,201);
         return back()->with('success',__('erp::ui.product_added'));
     }
     public function data(Request $request){

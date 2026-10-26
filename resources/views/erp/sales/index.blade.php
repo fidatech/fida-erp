@@ -21,6 +21,7 @@
 <label class="sr-only" for="sales-to">To date</label><input class="erp-field" type="date" name="to" id="sales-to" value="{{ $filters['to'] }}">
 <button type="submit" class="erp-btn">Search</button>
 </form></section>
+@if(request()->filled('draft'))<div class="fida-panel" style="padding:14px;margin-bottom:12px"><strong>Draft saved successfully.</strong> Review the invoice below, then click <strong>Post</strong> when ready. Payment is optional and can be received after posting.</div>@elseif(request()->filled('pay'))<div class="fida-panel" style="padding:14px;margin-bottom:12px"><strong>Invoice posted.</strong> You can receive payment now or leave it unpaid.</div>@endif
 <section class="fida-panel"><div class="fida-panel-heading"><h2>Sales Invoices ({{ number_format($stats['all']) }} total)</h2><span class="fida-chart-note">Amounts use each invoice's transaction currency</span></div>
 <div class="fida-table-wrap"><table class="fida-table">
 <thead><tr><th>Invoice No.</th><th>Date</th><th>Customer</th><th>Amount</th><th>Paid</th><th>Payment Status</th><th>Invoice Status</th><th>Actions</th></tr></thead><tbody>
@@ -46,4 +47,5 @@
 </tbody></table></div>
 <div style="padding:10px 15px">{{ $rows->links() }}</div>
 </section>
+<script>document.addEventListener('DOMContentLoaded',()=>{const id=new URLSearchParams(location.search).get('pay');if(!id||!/^\d+$/.test(id))return;const dialog=document.getElementById('payment-'+id);if(dialog&&typeof dialog.showModal==='function')dialog.showModal();});</script>
 @endsection
