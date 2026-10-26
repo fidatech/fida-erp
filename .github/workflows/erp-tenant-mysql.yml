@@ -181,7 +181,8 @@ jobs:
               id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
               warehouse_id BIGINT UNSIGNED NOT NULL,
               customer_id BIGINT UNSIGNED NULL, number VARCHAR(100) NULL,
-              total DECIMAL(18,2) NULL, currency_code CHAR(3) NULL,
+              total DECIMAL(18,2) NULL, paid DECIMAL(18,2) NOT NULL DEFAULT 0,
+              fx_rate DECIMAL(24,12) NOT NULL DEFAULT 1, currency_code CHAR(3) NULL,
               status VARCHAR(30) NULL, created_at TIMESTAMP NULL
             );
             CREATE TABLE erp_test_b.sales_invoices LIKE erp_test_a.sales_invoices;
